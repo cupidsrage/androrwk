@@ -1,0 +1,4365 @@
+/* jshint esversion: 6 */
+let jobType = "none";
+let playerName = document.querySelector("#s_name").innerText.toLowerCase();
+let barHidden = false;
+let showKingdomMenu = false;
+let showDaMenu = false;
+let showRuneMenu = false;
+let allowedKings = [];
+let avoidKings = [];
+let junkItems = [];
+let maxInventory;
+let burningItems = false;
+let startAsh;
+let storage = window.localStorage;
+let accountSettings = {
+    peStats: [],
+    tpLocs: [],
+    mobValue: [],
+    attack: '',
+    forge: [],
+    plexBorder: []	
+};
+let settingsMenu;
+let task = "none";
+let currentForgeLoc = 0;
+let moveLimit = false;
+let globalSync = false;
+let checkAsh = true;
+let kingCheck = true;
+let nobodyCheck = true;
+let currentUnit = 0;
+let ignoreQty = false;
+let ignoreTreb = false;
+let nukeKeysEnabled = false;
+let securityCheckWindow;
+let watchForTrades = false;
+let watchForNukes = true;
+let tradeScanner;
+let nukeScanner;
+nukeScanner = setInterval(nukeScan, 5000);
+let LC = (() => {
+    return parseInt(document.getElementById('s_LevelMax').innerText.replace(/\//gi, '').replace(/,/gi, ''), 10);
+})();
+let HC = (LC - 10);
+let SC = (HC - 500);
+let manageApex = false;
+let apexStatus = "none";
+let lastTask = "none";
+
+let attacks = {
+    "nobody": "attack",
+};
+
+let mob_value = {
+    "nobody": [0, 69],
+};
+
+let tp_locs = {
+    "nobody": [0, 0, 0, 0, 100, 250],
+};
+
+let pe = {
+    "nobody": ["UNSET", 'UNSET'],
+};
+
+let plexBorders = {
+    "nobody": [0, 0, 0, 0]
+};
+
+if (mob_value[playerName] == undefined) {
+    mob_value[playerName] = [0, 69];
+}
+
+if (tp_locs[playerName] == undefined) {
+    tp_locs[playerName] = [0, 0, 0, 0, 0, 0];
+}
+
+if (pe[playerName] == undefined) {
+    pe[playerName] = ['UNSET', 'UNSET'];
+}
+
+if (attacks[playerName] == undefined) {
+    attacks[playerName] = "attack";
+}
+
+if (plexBorders[playerName] == undefined) {
+    plexBorders[playerName] = ["000", "000", "000", "000"];
+}
+
+if (localStorage.globalTp == undefined) {
+    localStorage.gloablTp = "000,000";
+}
+
+if (localStorage.allowedKings == undefined) {
+    localStorage.allowedKings = `${playerName},nobody`;
+}
+if (localStorage.avoidKings == undefined) {
+    localStorage.avoidKings = `${playerName},nobody`;
+}
+
+if (localStorage.burnAsh == undefined) {
+    localStorage.burnAsh = "false";
+}
+let build_values = {
+    normal: {
+        tres: 2000000000,
+        food: 2000000000,
+        runes: localStorage.globalRunecount,
+        army: 2000000000,
+        fort: 2000000000
+    },
+    forge: {
+        tres: 1000000,
+        food: 50000,
+        runes: 999,
+        army: 250000,
+        fort: 100000
+    }
+};
+
+function savePlayerStats() {
+    storage[playerName] = JSON.stringify(accountSettings);
+}
+
+function loadPlayerStats() {
+    if (storage[playerName] !== undefined) {
+        accountSettings = Object.assign({}, JSON.parse(storage[playerName]));
+        if (accountSettings.forge == undefined) {
+            accountSettings.forge = [];
+        }
+        if (accountSettings.plexBorder == undefined) {
+            accountSettings.plexBorder = ["000", "000", "000", "000"];
+        }
+    } else {
+        let account = {
+            peStats: pe[playerName],
+            tpLocs: tp_locs[playerName],
+            mobValue: mob_value[playerName],
+            attack: attacks[playerName],
+            forge: [],
+            plexBorder: plexBorders[playerName]
+        };
+        storage[playerName] = JSON.stringify(account);
+        accountSettings = Object.assign({}, account);
+    }
+}
+
+let specialLocations = {
+    "forge": [141, 146],
+    "keep": [66, 66],
+    "shrine": [100, 250],
+    "id": [100, 200],
+    "ac": [141, 174],
+    "duel": [40, 140]
+};
+
+function daForgeLocsOne() {
+if (isReady()){
+    if (accountSettings.forge[currentForgeLoc] !== undefined) {
+        genChat(`/da ${accountSettings.forge[currentForgeLoc][0]},for,${accountSettings.forge[currentForgeLoc][1]}`);
+        currentForgeLoc++;
+    }
+}}
+
+function specialTp() {
+    let loc = document.querySelector("#tp-loc-select").value;
+    specialLocations.plex = [parseInt(accountSettings.plexBorder[0], 10), parseInt(accountSettings.plexBorder[1], 10)];
+    if (loc != "none") {
+        let x = specialLocations[loc][0];
+        let y = specialLocations[loc][1];
+        doAction(0, 'tele', x, y, '', true);
+    }
+}
+function Tp() {
+let x = parseInt(document.querySelector("#x-tp-loc").value, 10);
+let y = parseInt(document.querySelector("#y-tp-loc").value, 10);
+
+doAction(0, 'tele', x, y, '', true);
+            if (task == "nuke") {
+                return;
+            }
+        try {
+            $(ToggleHK).trigger("mousedown");
+        } catch (e) {
+            writeSystemMessage(e);
+        }
+}
+function doAction(form = 0, act = '', tar = '', oth = '', otha = '', autoSubmit = false) {
+if (isReady()){
+    let field = `general${form}`;
+    let submit = () => {
+        document.getElementById(`s_subbut${form}`).childNodes[0].click();
+    };
+    let action = document.getElementById(`${field}`).elements[4];
+    let updateA = () => {
+        try {
+            $(action).trigger("change");
+        } catch (e) {
+
+        }
+    };
+    let target = document.getElementById(`${field}`).elements[5];
+    let updateT = () => {
+        try {
+            $(target).trigger("change");
+        } catch (e) {
+
+        }
+    };
+    let other = document.getElementById(`${field}`).elements[6];
+    let othera = document.getElementById(`${field}`).elements[7];
+    action.value = act;
+    updateA();
+    if (!['battle', 'duel'].includes(action.value)) {
+        target.value = tar;
+    } else {
+        target.selectedIndex = tar;
+    }
+    if (action.value == "givek") {
+        target.options[0].value = tar;
+        target.options[0].innerText = tar;
+        target.value = tar;
+    }
+	    if (action.value == "trade") {
+        target.options[0].value = tar;
+        target.options[0].innerText = tar;
+        target.value = tar;
+    }
+    updateT();
+    other.value = oth;
+    othera.value = otha;
+    if (autoSubmit) {
+        submit();
+    }
+    return;
+	}
+	
+}
+
+function checkKing() {
+    let king = document.getElementById("s_King").innerText.toLowerCase();
+    if (kingCheck) {
+        if (playerName == king || localStorage.allowedKings.toLowerCase().indexOf(king) > -1) {
+            return true;
+        } else {
+            return false;
+        }
+    } else {
+        return true;
+    }
+}
+function checkavoid() {
+    let king = document.getElementById(`general0`).elements[5].value.toLowerCase();
+    if (kingCheck) {
+        if (localStorage.avoidKings.toLowerCase().indexOf(king) > -1) {
+		        console.log("true");
+            return true;
+        } else {
+		        console.log("false");
+            return false;
+        }
+    } else {
+	        console.log("truer");
+        return true;
+    }
+}
+function checkavoid1() {
+    let king = document.getElementById(`general0`).elements[5].value.toLowerCase();
+    if (kingCheck) {
+        if (localStorage.avoidKings.toLowerCase().indexOf(king) > -1) {
+            return false;
+        } else {
+            return true;
+        }
+    } else {
+        return false;
+    }
+}
+function doKingdom(form = 0, act = '', tar = '', oth = '', otha = '', autoSubmit = false) {
+if (isReady()) {
+    let field = `king${form}`;
+    let submit = () => {
+        document.getElementById(`s_subbutk${form}`).childNodes[0].click();
+    };
+    let action = document.getElementById(`${field}`).elements[4];
+    let updateA = () => {
+        try {
+            $(action).trigger("change");
+        } catch (e) {}
+    };
+    let target = document.getElementById(`${field}`).elements[5];
+    let updateT = () => {
+        try {
+            $(target).trigger("change");
+        } catch (e) {}
+    };
+    let other = document.getElementById(`${field}`).elements[6];
+    let othera = document.getElementById(`${field}`).elements[7];
+    action.value = act;
+    updateA();
+    target.value = tar;
+    updateT();
+    other.value = oth;
+    othera.value = otha;
+    if (autoSubmit) {
+        submit();
+    }
+    return;
+	}
+}
+
+function toggleBarVisibility() {
+    if (barHidden) {
+        barHidden = false;
+        document.getElementsByTagName("table")[4].style = "display: none";
+        document.getElementsByTagName("table")[7].style = "display: none";
+        document.getElementsByTagName("table")[10].style = "display: none";
+        document.getElementsByTagName("table")[11].style = "display: none";
+        document.getElementsByTagName("table")[13].style = "display: none";
+        document.getElementsByTagName("table")[15].style = "display: none";
+		document.getElementsByTagName("table")[12].style = "position:fixed;width:49%;height:100px;top:10%;left:1px;";
+		document.getElementsByTagName("table")[14].style = "position:fixed;width:49%;height:100px;top:10%;left:1px;margin-left:50%";
+    } else {
+        barHidden = true;
+		document.getElementsByTagName("table")[4].style = "display: block";
+        document.getElementsByTagName("table")[7].style = "display: block";
+        document.getElementsByTagName("table")[10].style = "display: block";
+        document.getElementsByTagName("table")[11].style = "display: block";
+        document.getElementsByTagName("table")[13].style = "display: block";
+        document.getElementsByTagName("table")[15].style = "display: block";
+		document.getElementsByTagName("table")[12].style = "float: left";
+		document.getElementsByTagName("table")[14].style = "float: left";
+    }
+}
+
+function checkInventory() {
+    for (let n = 0; n < 5; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf("Inventory dangerously full") > -1) {
+                if (!globalSync) {
+                    burningItems = true;
+                } else {
+                    localStorage.burnAsh = "true";
+                }
+            }
+		    if (s_Chat.childNodes[n].innerHTML.indexOf("No more of that relic can be crafted...you must sell some.") > -1) {
+                if (!globalSync) {
+                    burningItems = true;
+                } else {
+                    localStorage.burnAsh = "true";
+                }
+            }
+        } catch (e) {
+
+        }
+    }
+}
+
+function zeroPad(value) {
+    if (parseInt(value, 10) < 10) {
+        return `00${parseInt(value, 10)}`;
+    }
+    if (parseInt(value, 10) < 100 && parseInt(value, 10) >= 10) {
+        return `0${parseInt(value, 10)}`;
+    }
+    if (parseInt(value, 10) < 1000 && parseInt(value, 10) >= 100) {
+        return `${parseInt(value, 10)}`;
+    }
+}
+
+function securityCheck() {
+    for (let n = 0; n < 2; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf("Hello. Can you message me back quickly, please?") > -1) {
+                alert("Account Locked. Message Glitchless.");
+                writeSystemMessage("Please /wipe chat in order to continue.");
+							   localStorage.globalmasSec = "1";
+                return false;
+            }
+            if (s_Chat.childNodes[n].innerHTML.indexOf(`pm("Glitchless")`) > -1) {
+                alert("Glitchless Activity. Suggest Stopping");
+                writeSystemMessage("Please /wipe chat in order to continue.");
+							   localStorage.globalmasSec = "1";
+                return false;
+            }
+			if (s_Chat.childNodes[n].innerHTML.indexOf("Security check failed. If you repeatedly fail these checks your account will be banned. Failing an occasional security check is common and will not get you banned, however.") > -1) {
+                alert("Account Locked. failed securityCheck.");
+                writeSystemMessage("Please /wipe chat in order to continue.");
+							   localStorage.globalmasSec = "1";
+                return false;
+            }
+			if (s_Chat.childNodes[n].innerHTML.indexOf("Vampire`s Scorn") > -1) {
+						   localStorage.globalmasSec = "1";
+                alert("Super Relic Found");
+                writeSystemMessage("Please /wipe chat in order to continue.");
+                return false;
+            }
+			if (s_Chat.childNodes[n].innerHTML.indexOf("Melee`s Rage") > -1) {
+						   localStorage.globalmasSec = "1";
+                alert("Super Relic Found");
+                writeSystemMessage("Please /wipe chat in order to continue.");
+                return false;
+            }
+			if (s_Chat.childNodes[n].innerHTML.indexOf("Caster`s Revenge") > -1) {
+						   localStorage.globalmasSec = "1";
+                alert("Super Relic Found");
+                writeSystemMessage("Please /wipe chat in order to continue.");
+                return false;
+            }
+            if (s_Chat.childNodes[n].innerHTML.indexOf('You have hit the hourly maximum amount of moves.') > -1) {
+                return false;
+            }
+            if (s_Chat.childNodes[n].innerHTML.indexOf("Equipped items cannot be sold or destroyed.") > -1) {
+                s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("destroyed.", "destroyed!");
+                if (!globalSync) {
+                    burningItems = false;
+                } else {
+                    localStorage.burnAsh = "false";
+                }
+            }
+            if (document.querySelector("#s_Response").innerText.indexOf("Bot check. Count the objects seen.") > -1) {
+                beep();
+				if ( localStorage.globalsecCheck == 1) {
+				localStorage.globalmasSec = "1";
+				}
+                return true;
+			 }
+            return true;
+        } catch (err) {
+
+        }
+    }
+}
+function mathTest(){
+			   localStorage.globalmasSec = "0";
+			   }
+			  
+
+var snd = new Audio("data:audio/wav;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAGDgYtAgAyN+QWaAAihwMWm4G8QQRDiMcCBcH3Cc+CDv/7xA4Tvh9Rz/y8QADBwMWgQAZG/ILNAARQ4GLTcDeIIIhxGOBAuD7hOfBB3/94gcJ3w+o5/5eIAIAAAVwWgQAVQ2ORaIQwEMAJiDg95G4nQL7mQVWI6GwRcfsZAcsKkJvxgxEjzFUgfHoSQ9Qq7KNwqHwuB13MA4a1q/DmBrHgPcmjiGoh//EwC5nGPEmS4RcfkVKOhJf+WOgoxJclFz3kgn//dBA+ya1GhurNn8zb//9NNutNuhz31f////9vt///z+IdAEAAAK4LQIAKobHItEIYCGAExBwe8jcToF9zIKrEdDYIuP2MgOWFSE34wYiR5iqQPj0JIeoVdlG4VD4XA67mAcNa1fhzA1jwHuTRxDUQ//iYBczjHiTJcIuPyKlHQkv/LHQUYkuSi57yQT//uggfZNajQ3Vmz+Zt//+mm3Wm3Q576v////+32///5/EOgAAADVghQAAAAA//uQZAUAB1WI0PZugAAAAAoQwAAAEk3nRd2qAAAAACiDgAAAAAAABCqEEQRLCgwpBGMlJkIz8jKhGvj4k6jzRnqasNKIeoh5gI7BJaC1A1AoNBjJgbyApVS4IDlZgDU5WUAxEKDNmmALHzZp0Fkz1FMTmGFl1FMEyodIavcCAUHDWrKAIA4aa2oCgILEBupZgHvAhEBcZ6joQBxS76AgccrFlczBvKLC0QI2cBoCFvfTDAo7eoOQInqDPBtvrDEZBNYN5xwNwxQRfw8ZQ5wQVLvO8OYU+mHvFLlDh05Mdg7BT6YrRPpCBznMB2r//xKJjyyOh+cImr2/4doscwD6neZjuZR4AgAABYAAAABy1xcdQtxYBYYZdifkUDgzzXaXn98Z0oi9ILU5mBjFANmRwlVJ3/6jYDAmxaiDG3/6xjQQCCKkRb/6kg/wW+kSJ5//rLobkLSiKmqP/0ikJuDaSaSf/6JiLYLEYnW/+kXg1WRVJL/9EmQ1YZIsv/6Qzwy5qk7/+tEU0nkls3/zIUMPKNX/6yZLf+kFgAfgGyLFAUwY//uQZAUABcd5UiNPVXAAAApAAAAAE0VZQKw9ISAAACgAAAAAVQIygIElVrFkBS+Jhi+EAuu+lKAkYUEIsmEAEoMeDmCETMvfSHTGkF5RWH7kz/ESHWPAq/kcCRhqBtMdokPdM7vil7RG98A2sc7zO6ZvTdM7pmOUAZTnJW+NXxqmd41dqJ6mLTXxrPpnV8avaIf5SvL7pndPvPpndJR9Kuu8fePvuiuhorgWjp7Mf/PRjxcFCPDkW31srioCExivv9lcwKEaHsf/7ow2Fl1T/9RkXgEhYElAoCLFtMArxwivDJJ+bR1HTKJdlEoTELCIqgEwVGSQ+hIm0NbK8WXcTEI0UPoa2NbG4y2K00JEWbZavJXkYaqo9CRHS55FcZTjKEk3NKoCYUnSQ0rWxrZbFKbKIhOKPZe1cJKzZSaQrIyULHDZmV5K4xySsDRKWOruanGtjLJXFEmwaIbDLX0hIPBUQPVFVkQkDoUNfSoDgQGKPekoxeGzA4DUvnn4bxzcZrtJyipKfPNy5w+9lnXwgqsiyHNeSVpemw4bWb9psYeq//uQZBoABQt4yMVxYAIAAAkQoAAAHvYpL5m6AAgAACXDAAAAD59jblTirQe9upFsmZbpMudy7Lz1X1DYsxOOSWpfPqNX2WqktK0DMvuGwlbNj44TleLPQ+Gsfb+GOWOKJoIrWb3cIMeeON6lz2umTqMXV8Mj30yWPpjoSa9ujK8SyeJP5y5mOW1D6hvLepeveEAEDo0mgCRClOEgANv3B9a6fikgUSu/DmAMATrGx7nng5p5iimPNZsfQLYB2sDLIkzRKZOHGAaUyDcpFBSLG9MCQALgAIgQs2YunOszLSAyQYPVC2YdGGeHD2dTdJk1pAHGAWDjnkcLKFymS3RQZTInzySoBwMG0QueC3gMsCEYxUqlrcxK6k1LQQcsmyYeQPdC2YfuGPASCBkcVMQQqpVJshui1tkXQJQV0OXGAZMXSOEEBRirXbVRQW7ugq7IM7rPWSZyDlM3IuNEkxzCOJ0ny2ThNkyRai1b6ev//3dzNGzNb//4uAvHT5sURcZCFcuKLhOFs8mLAAEAt4UWAAIABAAAAAB4qbHo0tIjVkUU//uQZAwABfSFz3ZqQAAAAAngwAAAE1HjMp2qAAAAACZDgAAAD5UkTE1UgZEUExqYynN1qZvqIOREEFmBcJQkwdxiFtw0qEOkGYfRDifBui9MQg4QAHAqWtAWHoCxu1Yf4VfWLPIM2mHDFsbQEVGwyqQoQcwnfHeIkNt9YnkiaS1oizycqJrx4KOQjahZxWbcZgztj2c49nKmkId44S71j0c8eV9yDK6uPRzx5X18eDvjvQ6yKo9ZSS6l//8elePK/Lf//IInrOF/FvDoADYAGBMGb7FtErm5MXMlmPAJQVgWta7Zx2go+8xJ0UiCb8LHHdftWyLJE0QIAIsI+UbXu67dZMjmgDGCGl1H+vpF4NSDckSIkk7Vd+sxEhBQMRU8j/12UIRhzSaUdQ+rQU5kGeFxm+hb1oh6pWWmv3uvmReDl0UnvtapVaIzo1jZbf/pD6ElLqSX+rUmOQNpJFa/r+sa4e/pBlAABoAAAAA3CUgShLdGIxsY7AUABPRrgCABdDuQ5GC7DqPQCgbbJUAoRSUj+NIEig0YfyWUho1VBBBA//uQZB4ABZx5zfMakeAAAAmwAAAAF5F3P0w9GtAAACfAAAAAwLhMDmAYWMgVEG1U0FIGCBgXBXAtfMH10000EEEEEECUBYln03TTTdNBDZopopYvrTTdNa325mImNg3TTPV9q3pmY0xoO6bv3r00y+IDGid/9aaaZTGMuj9mpu9Mpio1dXrr5HERTZSmqU36A3CumzN/9Robv/Xx4v9ijkSRSNLQhAWumap82WRSBUqXStV/YcS+XVLnSS+WLDroqArFkMEsAS+eWmrUzrO0oEmE40RlMZ5+ODIkAyKAGUwZ3mVKmcamcJnMW26MRPgUw6j+LkhyHGVGYjSUUKNpuJUQoOIAyDvEyG8S5yfK6dhZc0Tx1KI/gviKL6qvvFs1+bWtaz58uUNnryq6kt5RzOCkPWlVqVX2a/EEBUdU1KrXLf40GoiiFXK///qpoiDXrOgqDR38JB0bw7SoL+ZB9o1RCkQjQ2CBYZKd/+VJxZRRZlqSkKiws0WFxUyCwsKiMy7hUVFhIaCrNQsKkTIsLivwKKigsj8XYlwt/WKi2N4d//uQRCSAAjURNIHpMZBGYiaQPSYyAAABLAAAAAAAACWAAAAApUF/Mg+0aohSIRobBAsMlO//Kk4soosy1JSFRYWaLC4qZBYWFRGZdwqKiwkNBVmoWFSJkWFxX4FFRQWR+LsS4W/rFRb/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZGUAAAAAAAAAACU=");
+
+function beep() {
+    snd.play();
+    setTimeout(() => {
+        snd.play();
+        setTimeout(() => {
+            snd.play();
+            setTimeout(() => {
+                snd.play();
+                setTimeout(() => {
+                    snd.play();
+                }, 500);
+            }, 500);
+        }, 500);
+    }, 500);
+}
+
+function genChat(msg) {
+    window.chattybox.value = msg;
+    s_chatbut.childNodes[0].click();
+}
+
+function showExtra(n) {
+    document.querySelector("a[name=LessGeneral]").click();
+    document.querySelector("a[name=LessGeneral]").click();
+    document.querySelector("a[name=LessGeneral]").click();
+    switch (n) {
+        case 1:
+            document.querySelector("a[name=MoreGeneral]").click();
+            break;
+
+        case 2:
+            document.querySelector("a[name=MoreGeneral]").click();
+            document.querySelector("a[name=MoreGeneral]").click();
+            break;
+
+        case 3:
+            document.querySelector("a[name=MoreGeneral]").click();
+            document.querySelector("a[name=MoreGeneral]").click();
+            document.querySelector("a[name=MoreGeneral]").click();
+            break;
+
+        default:
+            document.querySelector("a[name=LessGeneral]").click();
+            document.querySelector("a[name=LessGeneral]").click();
+            document.querySelector("a[name=LessGeneral]").click();
+            break;
+    }
+}
+
+function setJobType() {
+    //Battle
+    doAction(1, 'battle', 0, '', '', false);
+    if (jobType == "ash") {
+        showExtra(2);
+        //Target
+        doAction(0, 'fight', accountSettings.mobValue[0], '', '', false);
+        //Teleport
+        doAction(2, 'tele', accountSettings.tpLocs[4], accountSettings.tpLocs[5], '', false);
+		doKingdom(0, 'settle', '', '', '', false);
+    }
+    if (jobType == "bezzgf") {
+        showExtra(2);
+        //Target
+        doAction(0, 'fight', accountSettings.mobValue[1], '', '', false);
+        //Teleport
+        doAction(2, 'tele', accountSettings.tpLocs[0], accountSettings.tpLocs[1], '', false);
+    }
+    if (jobType == "kdrun") {
+        showExtra(2);
+        //Target
+        doAction(0, 'fight', accountSettings.mobValue[1], '', '', false);
+        //Teleport
+        doAction(2, 'tele', accountSettings.tpLocs[2], accountSettings.tpLocs[3], '', false);
+    }
+    if (jobType == "inquest") {
+        showExtra(2);
+        //Duel
+        doAction(0, 'duel', 0, '', '', false);
+        //Teleport
+        doAction(3, 'tele', 40, 140, '', false);
+        //Teleport
+        let locs = localStorage.globalTp.split(",");
+        doAction(2, 'tele', parseInt(locs[0], 10), parseInt(locs[1], 10), '', false);
+    }
+    if (jobType == "build") {
+        showExtra(3);  
+        let locs = localStorage.globalTp.split(",");
+		let build = localStorage.globalBuild;
+        doAction(0, 'tele', accountSettings.tpLocs[6] , build , '', false);
+		doAction(2, 'tele', accountSettings.tpLocs[7] , build , '', false);
+		doAction(3, 'tele', accountSettings.tpLocs[8] , build , '', false);
+    }
+    if (jobType == "none") {
+        showExtra(0);
+        //Duel
+        doAction(0, 'fight', accountSettings.mobValue[0], '', '', false);
+    }
+}
+
+function findJunk() {
+    doAction(0, 'burn', '999999999', '', '', false);
+    junkItems = [];
+    let relics = [
+        35,
+        36,
+        37,
+        38,
+        39,
+        46,
+        47,
+        51,
+        52,
+        53,
+        54,
+        55,
+        58,
+        59,
+        60,
+        64,
+        66,
+        67,
+        68,
+        69,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88
+    ];
+
+    let elm = document.getElementById(`general0`).elements[5];
+	    for (let n = 0; n < elm.length; n++) {
+        let item = elm.options[n].value;
+		let itemText = elm.options[n].innerText;
+        if (item >= 0 && item < 79||item >= 1000 && item < 1079||item >= 2000 && item < 2079||item >= 3000 && item < 3079||item >= 4000 && item < 4079||item >= 5000 && item < 6079||item >= 7000 && item < 7079||item >= 8000 && item < 8079||item >= 9000 && item < 9079||item >= 10000 && item < 10036||item >= 10040 && item < 10052||item >= 12000 && item < 12079||item >= 13000 && item < 13079||item >= 14000 && item < 14079||item >= 15000 && item < 15079||item >= 16000 && item < 16079||item >= 17000 && item < 17079||item >= 18000 && item < 18079||item >= 19000 && item < 19079||item >= 20000 && item < 20079||item >= 21000 && item < 21079||item >= 22000 && item < 22079||item >= 23000 && item < 23079||item >= 24000 && item < 24079||item >= 25000 && item < 25079||item >= 26000 && item < 26079||item == 10060) {	
+                if (itemText.indexOf("EQUIPPED") == -1) {
+                    junkItems.push(item);
+                }
+            }
+        }
+    for (let n = 0; n < elm.length; n++) {
+        let item = elm.options[n].value;
+        let itemText = elm.options[n].innerText;
+        if (getEnch(item) > -1 && (parseInt(item, 10) % 1000 < 70)) {
+            if (relics.indexOf(parseInt(item / 100000, 10) % 100 - 1) < 0) {
+                if (itemText.indexOf("EQUIPPED") == -1) {
+                    junkItems.push(item);
+                }
+            }
+        }
+    }
+}
+
+function increaseItem() {
+let itemnum = accountSettings.mobValue[5];
+let itemnum1 = parseInt(itemnum, 10) + 1;
+	doAction(0, 'ts', '15', itemnum1, '', true);
+accountSettings.mobValue[5] = itemnum1;
+writeSystemMessage1("reset");
+savePlayerStats();
+return;
+}
+
+function craftlvl() {
+	let type = accountSettings.mobValue[4];
+	let itemnum = accountSettings.mobValue[5];
+	let itemnum1 = parseInt(itemnum, 10) + 1;
+	let itemnum2 = parseInt(itemnum, 10) - 1;
+	let count = document.getElementById('system-message1').innerText
+	let move1 = document.getElementById("no-go-loc").value;
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+	if (isReadyThree()){
+			if (document.querySelector("#s_Response").innerText.indexOf("You don't have enough gold.") > -1){
+getGold();
+document.querySelector("#s_Response").innerText = "Go Go Gadget Dick.";
+return;
+}
+if (count == ("8")){
+accountSettings.mobValue[5] = itemnum2;
+writeSystemMessage1("reset");
+savePlayerStats();
+document.getElementById("no-go-loc").value = "1";
+	doAction(0, 'ts', type, itemnum2, '', false);
+return;
+}
+if (document.querySelector("#s_Response").innerText.indexOf("You do not have enough runes.") > -1){
+     move();
+	}
+	if (document.querySelector("#s_Response").innerText.indexOf("You have failed to create the item and lose your investment.") > -1&&count == ("7")||document.querySelector("#s_Response").innerText.indexOf("You have failed to create the item and lose your investment.") > -1&&count == ("8")){
+	if (count == ("7")){
+	writeSystemMessage1("8");
+	document.getElementById("no-go-loc").value = "1";
+		doAction(0, 'ts', type, itemnum, '', true);
+	return;
+	}
+	}
+		if (document.querySelector("#s_Response").innerText.indexOf("You have failed to create the item and lose your investment.") > -1){
+doAction(0, 'ts', type, itemnum, '', true);
+document.getElementById("no-go-loc").value = "1";
+writeSystemMessage1("7");
+return;
+}
+	if (document.querySelector("#s_Response").innerText.indexOf("This item is trivial for you to create.") > -1){
+doAction(0, 'ts', type, itemnum1, '', false);
+document.getElementById("no-go-loc").value = "1";
+accountSettings.mobValue[5] = itemnum1;
+document.querySelector("#s_Response").innerText = "Go Go Gadget Dick.";
+savePlayerStats();
+return;
+}
+	if (count == ("5")){
+	doAction(0, 'ts', type, itemnum1, '', false);
+	document.getElementById("no-go-loc").value = "1";
+accountSettings.mobValue[5] = itemnum1;
+writeSystemMessage1("reset");
+savePlayerStats();
+return;
+}
+	if (count == ("1")||count == ("2")||count == ("3")||count == ("4")){
+	if (count == ("1")){               
+	writeSystemMessage1("2");
+	document.getElementById("no-go-loc").value = "1";
+		doAction(0, 'ts', type, itemnum, '', true);
+	return;
+	}
+	if (count == ("2")){
+	writeSystemMessage1("3");
+	document.getElementById("no-go-loc").value = "1";
+		doAction(0, 'ts', type, itemnum, '', true);
+	return;
+	}
+	if (count == ("3")){
+	writeSystemMessage1("4");
+	document.getElementById("no-go-loc").value = "1";
+		doAction(0, 'ts', type, itemnum, '', true);
+	return;
+	}
+	if (count == ("4")){
+	writeSystemMessage1("5");
+	document.getElementById("no-go-loc").value = "1";
+		doAction(0, 'ts', type, itemnum, '', true);
+	return;
+	}	
+	}
+	if (document.querySelector("#s_Response").innerText.indexOf("Item creation successful.") > -1){
+	doAction(0, 'ts', type, itemnum, '', true);
+	document.getElementById("no-go-loc").value = "1";
+	writeSystemMessage1("1");
+	return;
+	}
+else{                          
+doAction(0, 'ts', type, itemnum, '', true);
+document.getElementById("no-go-loc").value = "1";
+	writeSystemMessage1("1");
+}}}
+
+function enchantlvl() {
+	let type = accountSettings.mobValue[4];
+	let itemnum = accountSettings.mobValue[5];
+	let itemnum1 = parseInt(itemnum, 10) + 15000;
+	let itemnum11 = parseInt(itemnum, 10) + 1;
+	let itemnum2 = parseInt(itemnum, 10) - 1 + 115000;
+	let itemnum3 = parseInt(itemnum, 10) + 115000;
+	let itemnum4 = parseInt(0, 10);
+	let track = parseInt(type, 10) + 1;
+	let count = document.getElementById('system-message1').innerText
+	
+	if (document.querySelector("#s_Response").innerText.indexOf("You do not have enough runes.") > -1){
+     move();
+	}	
+				if (document.querySelector("#s_Response").innerText.indexOf("You don't have enough gold.") > -1){
+getGold();
+document.querySelector("#s_Response").innerText = "Go Go Gadget Dick.";
+return;
+}
+	
+	if (type == ("10")&&count == ("dis")||type == ("11")&&count == ("dis")){
+			accountSettings.mobValue[4] = itemnum4;
+			savePlayerStats();
+		doAction(0, 'ts', '15', itemnum11, '', true);
+accountSettings.mobValue[5] = itemnum11;
+writeSystemMessage1("reset");
+savePlayerStats();
+return;
+}
+			    for (let i = 0; i < 5; i++) {
+        try {
+            if (s_Chat.childNodes[i].innerHTML.indexOf("Your skill in Chantcrafting has improved") > -1){
+			doAction(0, 'es', itemnum1, '10000', '', true);
+accountSettings.mobValue[4] = track;
+savePlayerStats();
+writeSystemMessage1("enchant");
+			return;
+break;}
+                    }					
+					catch (e) {
+        }}
+	
+		    for (let i = 0; i < 2; i++) {
+        try {
+            if (s_Chat.childNodes[i].innerHTML.indexOf("The second item must be a relic.") > -1){
+			doAction(0, 'ds', itemnum3, '', '', true);
+writeSystemMessage1("dis");
+break;}
+                    }					
+					catch (e) {
+        }}
+						
+if (document.querySelector("#s_Response").innerText.indexOf("You have failed to create the item and lose your investment.") > -1&&count == ("dis")){
+doAction(0, 'ds', itemnum3, '', '', true);
+writeSystemMessage1("dis");
+}	
+if (document.querySelector("#s_Response").innerText.indexOf("You have failed to create the item and lose your investment.") > -1&&count == ("enchant")){
+doAction(0, 'es', itemnum1, '10000', '', true);
+writeSystemMessage1("enchant");
+return;
+}
+
+if (document.querySelector("#s_Response").innerText.indexOf("Item creation successful.") > -1&&count == ("enchant")){
+doAction(0, 'ds', itemnum3, '', '', true);
+writeSystemMessage1("dis");
+return;	
+}
+ else {                        
+doAction(0, 'es', itemnum1, '10000', '', true);
+writeSystemMessage1("enchant");
+}}
+
+function getEnch(itemnumber) {
+    return parseInt(itemnumber / 100000, 10) % 100 - 1;
+}
+
+function getType(itemnumber) {
+    return parseInt(itemnumber / 1000, 10) % 100;
+}
+
+function getValue(itemnumber) {
+    return parseInt(itemnumber, 10) % 1000;
+}
+
+function burnItems(force = false) {
+let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
+let move1 = document.getElementById("no-go-loc").value;
+let beast = document.querySelector("#auto-beast-check").checked;
+let move = document.getElementById("beast-track").value;
+if (beast){
+      	  if (move == ('move1')||move == ('move2')||move == ('move3')||move == ('move4')||move == ('move5')||move == ('move6')||move == ('move7')||move == ('move8')||move == ('beast')) {
+      autobeastHunter();  
+        return;
+		}
+    for (let n = 0; n < 5; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf("has awoken a beast ") > -1) {
+             autobeastHunter();  
+				document.getElementById("beast-track").value = "beast";
+                    break;
+                }
+            } catch (e) {
+
+            }
+        }
+}
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+if (isReadyTwo()){
+		    for (let i = 0; i < 2; i++) {
+        try {
+            if (s_Chat.childNodes[i].innerHTML.indexOf("That will cause you to waste over 1 million gold.") > -1){
+			                if (isReadyTwo() && gold > 0) {
+                    if  (gold == 2000000000) {
+                        doKingdom(0, 'rune', '', '', 2, true);
+						document.getElementById("no-go-loc").value = "1";
+                    }
+                    if (isReadyTwo() && (gold >= 1000000000 && gold <= 2000000000)) {
+                        doKingdom(0, 'rune', '', '', 1, true);
+						document.getElementById("no-go-loc").value = "1";
+                    }
+					}
+					}
+					}
+					catch (e) {
+
+        }
+					}
+    findJunk();
+    if (junkItems.length > 0) {
+        if (force) {
+		document.getElementById("no-go-loc").value = "1";
+            doAction(0, "burn", junkItems[0], '', '', true);
+            junkItems = junkItems.splice(1, junkItems.length);
+
+        } else {
+            if (!globalSync) {
+			document.getElementById("no-go-loc").value = "1";
+                doAction(0, "burn", junkItems[0], '', '', true);
+                junkItems = junkItems.splice(1, junkItems.length);
+            } else {
+                if (isReadyTwo() && localStorage.burnAsh == "true") {
+				document.getElementById("no-go-loc").value = "1";
+                    doAction(0, "burn", junkItems[0], '', '', true);
+                    junkItems = junkItems.splice(1, junkItems.length);
+                }
+            }
+        }
+        document.querySelector("#ash-earned").innerText = parseInt(startAsh - getCurrentAsh(), 10);
+    } else {
+        if (!globalSync) {
+            burningItems = false;
+        } else {
+            localStorage.burnAsh = "false";
+        }
+        if (!force) {
+            writeSystemMessage(`${getCurrentAsh() - startAsh} Ash earned this session.`);
+        }
+    }
+}
+}
+function tradeScan() {
+    let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
+    if (watchForTrades && isReady()) {
+	burnItems(force = true);
+        for (i = 0; i < 5; i++) {
+            try {
+                if (s_Chat.childNodes[i].innerText.indexOf("Trade complete") > -1 || s_Chat.childNodes[i].innerText.indexOf("Trade Expired.") > -1 || s_Chat.childNodes[i].innerText.indexOf("Not enough gold") > -1) {
+                    break;
+                }
+            } catch (e) {
+
+            }
+            try {
+                let line = s_Chat.childNodes[i].innerHTML;
+                if (line.indexOf('name="TAccept') > -1) {
+                    let acceptString = s_Chat.childNodes[i].childNodes[2].name;
+                    let goldCost = acceptString.substring(acceptString.lastIndexOf(','), acceptString.length);
+                    if (isReadyTwo() && securityCheck()) {
+                        s_Chat.childNodes[i].childNodes[2].click();
+                        break;
+                    } else {
+                        writeSystemMessage("Could not accept trade due to gold, or delay.");
+                        if (!securityCheck()) {
+                            writeSystemMessage("Security check, disabling trade scanner.");
+                            toggleTradeScan();
+                        }
+                        break;
+                    }
+                }
+            } catch (e) {}
+        }
+    }
+}
+
+function toggleTradeScan() {
+    if (watchForTrades) {
+        watchForTrades = false;
+        tradeScanner = clearInterval(tradeScanner);
+    } else {
+        watchForTrades = true;
+        tradeScanner = setInterval(tradeScan, 1100);
+    }
+    writeSystemMessage(`Trade watcher enabled: ${watchForTrades}`);
+}
+
+function nukeScan() {
+    if (watchForNukes) {
+        for (i = 0; i < 5; i++) {
+            try {
+                if (s_Chat.childNodes[i].innerText.indexOf("has attacked your kingdom") > -1) {
+				genChat(`/m firefoxx: The sky is falling`);
+				beep();
+                    break;
+                }
+            } catch (e) {
+
+            }
+        }
+    }
+}
+
+function toggleNukeScan() {
+    if (watchForNukes) {
+        watchForNukes = false;
+        nukeScanner = clearInterval(nukeScanner);
+    } else {
+        watchForNukes = true;
+        nukeScanner = setInterval(nukeScan, 5000);
+    }
+    writeSystemMessage(`Nuke watcher enabled: ${watchForNukes}`);
+}
+
+
+
+
+function isReady() {
+    let bWidth = parseInt(document.querySelector("#BarneyEmpty").width, 10);
+	let subDisp = document.getElementById("s_subbut0").style.display;
+	let useRep = document.querySelector("#kd-use-rep").checked;
+    let goldSource = document.querySelector("#gold-source").value;
+	let armyCheck = document.querySelector("#kd-builder-unit").value
+	    let chance = randomValue(1, 100);
+	    if (document.querySelector("#s_Response").innerText == "You have not waited the necessary amount of time before doing another action. Now you must wait an additional 10 seconds.") {
+			   localStorage.globalmasSec = "1";
+        return (bWidth == 100 && subDisp !== 'none');
+    }	
+		    if (task == "rune" && goldSource == "bezz") {
+        return (bWidth >= 50 && subDisp !== 'none');
+    }
+
+	else {
+        return (bWidth >= Math.floor(randomValue(60, 60)) && subDisp !== 'none');
+		}
+
+  }
+
+function isReadyThree() {
+    let bWidth = parseInt(document.querySelector("#BarneyEmpty").width, 10);
+	let subDisp = document.getElementById("s_subbut0").style.display;
+    if (document.querySelector("#s_Response").innerText == "You have not waited the necessary amount of time before doing another action. Now you must wait an additional 10 seconds.") {
+			   localStorage.globalmasSec = "1";
+        return (bWidth == 100 && subDisp !== 'none');
+    }
+	else {
+        return (bWidth >= accountSettings.peStats[3] && subDisp !== 'none');
+  }
+}
+function isReadyTwo() {
+    let bWidth = parseInt(document.querySelector("#BarneyEmpty").width, 10);
+    let subDisp = document.getElementById("s_subbut0").style.display;
+    if (document.querySelector("#s_Response").innerText == "You have not waited the necessary amount of time before doing another action. Now you must wait an additional 10 seconds.") {
+			   localStorage.globalmasSec = "1";
+        return (bWidth == 100 && subDisp !== "none");
+    } else {
+        return (bWidth == 100 && subDisp !== "none");
+  }
+}
+
+function getCurrentAsh() {
+    return parseInt(document.querySelector("#s_Ash").innerText.replace(/\,/g, ''), 10);
+}
+function openExternalMenu() {
+    settingsMenu = window.open("about:blank", 'options', 'width=600px, height=500px');
+    let menuHtml = `<body style="background:black;color:white">
+    <div>
+        <span><b>Account: </b>${playerName}</span> 
+    </div>
+    <br>
+    <div>
+        <span><b>Attack Type:</b>
+        <select id="attack-type">
+        ${generateSelectMenu(0,0, accountSettings.attack, true)}
+        </select></span>
+    </div>
+    <br>
+    <div>
+        <span><b>Teleport Locations:</b><br>
+            <span>Plex X: <input type="text" style="width:30px" id="plex-x" value="${accountSettings.tpLocs[0]}"></span>
+            <span>Plex Y: <input type="text" style="width:30px" id="plex-y" value="${accountSettings.tpLocs[1]}"></span> <br>
+            <span>GF Points X: <input type="text" style="width:30px" id="gf-x" value="${accountSettings.tpLocs[2]}"></span>
+            <span>GF Points Y: <input type="text" style="width:30px" id="gf-y" value="${accountSettings.tpLocs[3]}"></span> <br>
+            <span>Ash X: <input type="text" style="width:30px" id="ash-x" value="${accountSettings.tpLocs[4]}"></span>
+            <span>Ash Y: <input type="text" style="width:30px" id="ash-y" value="${accountSettings.tpLocs[5]}"></span> <br>
+			<span><b>Mass Build:</b><br>
+			<span>build1: <input type="text" style="width:30px" id="build1" value="${accountSettings.tpLocs[6]}"></span>
+			<span>build2: <input type="text" style="width:30px" id="build2" value="${accountSettings.tpLocs[7]}"></span>
+			<span>build3: <input type="text" style="width:30px" id="build3" value="${accountSettings.tpLocs[8]}"></span>			
+        </span>
+    </div>
+    <br>
+    <div>
+        <span><b>Embezzle Settings:</b>
+            <span>Loc: <input type="text" style="width:100px" id="pe-loc" value="${accountSettings.peStats[0]}"></span>
+            <span>Value: <input type="text" style="width:100px" id="pe-amount" value="${accountSettings.peStats[1]}"></span>
+			<span>Max DA loc: <input type="text" style="width:100px" id="max-da" value="${accountSettings.peStats[2]}"></span>
+			<span>Direction: <select id="move-dir">${generateSelectMenu(0,1, accountSettings.mobValue[3])}</select></span>
+        </span>
+    </div>
+	       <span><b>craft Settings:</b>
+			<span>type: <select id="item-type">${generateSelectMenu(0,27, accountSettings.mobValue[4])}</select></span>
+			<span>item: <select id="item-num">${generateSelectMenu(0,78, accountSettings.mobValue[5])}</select></span>
+        </span>
+    </div>
+    <br>
+	<div>
+	        <span><b>Stat limiter:</b>
+			<br>
+            <span>STR: <input type="text" style="width:50px" id="STR" value="${accountSettings.tpLocs[9]}"></span>
+			<span>DEX: <input type="text" style="width:50px" id="DEX" value="${accountSettings.tpLocs[10]}"></span>
+			<span>AGI: <input type="text" style="width:50px" id="AGI" value="${accountSettings.tpLocs[11]}"></span>
+			<span>DUR: <input type="text" style="width:50px" id="DUR" value="${accountSettings.tpLocs[12]}"></span>
+			<span>NTL: <input type="text" style="width:50px" id="NTL" value="${accountSettings.tpLocs[13]}"></span>
+			<span>CNC: <input type="text" style="width:50px" id="CNC" value="${accountSettings.tpLocs[14]}"></span>
+			<span>CNT: <input type="text" style="width:50px" id="CNT" value="${accountSettings.tpLocs[15]}"></span>
+    </div>
+	    <br>
+	<div>
+		<span><b>Barney bar speed</b>
+		<span>Value: <input type="text" style="width:100px" id="barney-bar" value="${accountSettings.peStats[3]}"></span>
+		</span>
+		</div>
+		<br>
+    <div>
+        <span><b>Monster Values:</b>
+            <span>Ashing: <select id="ash-mob">${generateSelectMenu(0,69, accountSettings.mobValue[0])}</select></span>
+            <span>GF Points: <select id="gf-mob">${generateSelectMenu(0,69, accountSettings.mobValue[1])}</select></span>
+        </span>
+    </div>
+    <br>
+    <div>
+        <span><b>Global Tp:</b>
+            <span><input type="text" id="global-tp-loc" style="width:70px" maxlength="7" value="${localStorage.globalTp}">
+        </span>
+    </div>
+	    <br>
+    <div>
+        <span><b>Global build:</b>
+            <span><input type="text" id="global-build-loc" style="width:70px" maxlength="7" value="${localStorage.globalBuild}">
+        </span>
+    </div>
+	    <br>
+    <div>
+        <span><b>Global Trade player:</b>
+            <span><input type="text" id="global-trade-player" style="width:70px" maxlength="20" value="${localStorage.globalTradeplayer}">
+        </span>
+    </div>
+	    <br>
+    <div>
+        <span><b>Global Trade item:</b>
+            <span><input type="text" id="global-trade-item" style="width:70px" maxlength="7" value="${localStorage.globalTradeitem}">
+        </span>
+    </div>
+    <br>
+	    <div>
+        <span><b>Global rune count:</b>
+            <span><input type="text" id="global-rune-count" style="width:70px" maxlength="3" value="${localStorage.globalRunecount}"> </span>
+    </div>
+    <br>
+		    <div>
+        <span><b>Global forge armies:</b>
+		<br>
+         Soldiers:<span><input type="text" id="global-forge-sol" style="width:70px" maxlength="10" value="${localStorage.globalForgesol}"> </span>
+	     Archers:<span><input type="text" id="global-forge-arch" style="width:70px" maxlength="10" value="${localStorage.globalForgearch}"> </span>
+		 Cats:<span><input type="text" id="global-forge-cat" style="width:70px" maxlength="10" value="${localStorage.globalForgecat}"> </span>
+		 Trebs:<span><input type="text" id="global-forge-treb" style="width:70px" maxlength="10" value="${localStorage.globalForgetreb}"> </span>
+	     All:<span><input type="text" id="global-forge-all" style="width:70px" maxlength="10" value="${localStorage.globalForgeall}"> </span>
+    </div>
+    <br>
+    <div>
+        <span><b>Allowed Kings:</b>
+            <span><input type="text" id="global-allowed-kings" value="${localStorage.allowedKings.toLowerCase()}" style="width:200px"> <button onclick="window.opener.resetGlobalKings();">Reset</button></span>
+        </span>
+    </div>
+   <br>
+       <div>
+        <span><b>Avoid Attaks:</b>
+            <span><input type="text" id="global-avoid-kings" value="${localStorage.avoidKings}" style="width:200px"> <button onclick="window.opener.resetGlobalKings();">Reset</button></span>
+        </span>
+    </div>
+   <br>
+    <div>
+        <span><b>Forge Locations:</b>
+            <span><select id="forge-loc-list">${generateForgeLocs()}</select></span>
+            <span><input type="text" id="forge-loc-input" placeholder="123,123" maxlength="7" style="width:70px">
+            <button onclick="window.opener.addForgeLocation();">Add</button><button onclick="window.opener.removeForgeLocation();">Remove</button></span>
+        </span>
+    </div>
+    <br>
+    <div>
+        <span><b>Plex Borders:</b>
+        <label for="plex-x-min">Min X: <input type="text" style="width:30px" id="plex-x-min" value="${accountSettings.plexBorder[0]}"> </label> <label for="plex-x-min">Min Y: <input type="text" style="width:30px" id="plex-y-min" value="${accountSettings.plexBorder[1]}"> </label>
+        <label for="plex-x-min">Max X: <input type="text" style="width:30px" id="plex-x-max" value="${accountSettings.plexBorder[2]}"> </label> <label for="plex-x-min">Max Y: <input type="text" style="width:30px" id="plex-y-max" value="${accountSettings.plexBorder[3]}"> </label>
+        </span>
+    </div>
+	<br>
+	        <span><b>set to 0 and do not edit:</b>
+            <span><input type="text" id="global-mas-sec" style="width:30px" maxlength="1" value="${localStorage.globalmasSec}">'
+			<br>
+			<span><b>stop all on SC:</b>
+			<span><input type="text" id="global-sec-check" style="width:30px" maxlength="1" value="${localStorage.globalsecCheck}">
+        </span>
+    </div>
+	    <br>
+    <div>
+        <span>
+            <button onclick="window.opener.saveExternalSettings();">Save & Close</button><button onclick="window.opener.massLoad();">Load String</button>
+        </span>
+    </div>
+</body>`;
+    settingsMenu.document.write(menuHtml);
+}
+
+function saveExternalSettings() {
+    accountSettings.tpLocs[0] = settingsMenu.document.querySelector("#plex-x").value;
+    accountSettings.tpLocs[1] = settingsMenu.document.querySelector("#plex-y").value;
+    accountSettings.tpLocs[2] = settingsMenu.document.querySelector("#gf-x").value;
+    accountSettings.tpLocs[3] = settingsMenu.document.querySelector("#gf-y").value;
+    accountSettings.tpLocs[4] = settingsMenu.document.querySelector("#ash-x").value;
+    accountSettings.tpLocs[5] = settingsMenu.document.querySelector("#ash-y").value;
+    accountSettings.tpLocs[6] = settingsMenu.document.querySelector("#build1").value;
+    accountSettings.tpLocs[7] = settingsMenu.document.querySelector("#build2").value;
+    accountSettings.tpLocs[8] = settingsMenu.document.querySelector("#build3").value;
+	accountSettings.tpLocs[9] = settingsMenu.document.querySelector("#STR").value;
+    accountSettings.tpLocs[10] = settingsMenu.document.querySelector("#DEX").value;
+	accountSettings.tpLocs[11] = settingsMenu.document.querySelector("#AGI").value;
+    accountSettings.tpLocs[12] = settingsMenu.document.querySelector("#DUR").value;
+	accountSettings.tpLocs[13] = settingsMenu.document.querySelector("#NTL").value;
+	accountSettings.tpLocs[14] = settingsMenu.document.querySelector("#CNC").value;
+	accountSettings.tpLocs[15] = settingsMenu.document.querySelector("#CNT").value;								
+    accountSettings.peStats[0] = settingsMenu.document.querySelector("#pe-loc").value;
+    accountSettings.peStats[1] = settingsMenu.document.querySelector("#pe-amount").value;
+	accountSettings.peStats[2] = settingsMenu.document.querySelector("#max-da").value;
+	accountSettings.peStats[3] = settingsMenu.document.querySelector("#barney-bar").value;
+	accountSettings.mobValue[3] = settingsMenu.document.querySelector("#move-dir").value;
+	accountSettings.mobValue[4] = settingsMenu.document.querySelector("#item-type").value;
+	accountSettings.mobValue[5] = settingsMenu.document.querySelector("#item-num").value;
+    accountSettings.mobValue[0] = settingsMenu.document.querySelector("#ash-mob").value;
+    accountSettings.mobValue[1] = settingsMenu.document.querySelector("#gf-mob").value;
+    accountSettings.attack = settingsMenu.document.querySelector("#attack-type").value;
+    accountSettings.plexBorder = [zeroPad(settingsMenu.document.querySelector("#plex-x-min").value), zeroPad(settingsMenu.document.querySelector("#plex-y-min").value), zeroPad(settingsMenu.document.querySelector("#plex-x-max").value), zeroPad(settingsMenu.document.querySelector("#plex-y-max").value)];
+    localStorage.globalTp = settingsMenu.document.querySelector("#global-tp-loc").value;
+	localStorage.globalBuild = settingsMenu.document.querySelector("#global-build-loc").value;
+    localStorage.globalTradeplayer = settingsMenu.document.querySelector("#global-trade-player").value;
+	localStorage.globalmasSec = settingsMenu.document.querySelector("#global-mas-sec").value;
+	localStorage.globalsecCheck = settingsMenu.document.querySelector("#global-sec-check").value;
+	localStorage.globalTradeitem = settingsMenu.document.querySelector("#global-trade-item").value;
+	localStorage.globalRunecount = settingsMenu.document.querySelector("#global-rune-count").value;
+	localStorage.globalForgesol = settingsMenu.document.querySelector("#global-forge-sol").value;
+	localStorage.globalForgearch = settingsMenu.document.querySelector("#global-forge-arch").value;
+	localStorage.globalForgecat = settingsMenu.document.querySelector("#global-forge-cat").value;
+	localStorage.globalForgetreb = settingsMenu.document.querySelector("#global-forge-treb").value;
+	localStorage.globalForgeall = settingsMenu.document.querySelector("#global-forge-all").value;
+    localStorage.allowedKings = settingsMenu.document.querySelector("#global-allowed-kings").value.toLowerCase();
+    localStorage.avoidKings = settingsMenu.document.querySelector("#global-avoid-kings").value.toLowerCase();	
+    savePlayerStats();
+    settingsMenu.close();
+}
+
+function generateForgeLocs() {
+    let temp_html = ``;
+    accountSettings.forge.forEach(location => {
+        temp_html += `<option value='${location}'>${location}</option>`;
+    });
+    return temp_html;
+}
+
+function addForgeLocation() {
+    let location = settingsMenu.document.querySelector("#forge-loc-input").value;
+    let locs = location.split(',');
+    if (locs[0] >= 0 && locs[0] <= 299 && locs[1] >= 0 && locs[1] <= 299) {
+        if (accountSettings.forge.indexOf([(locs[0]), (locs[1])] == -1)) {
+            accountSettings.forge.push([(locs[0]), (locs[1])]);
+        }
+        savePlayerStats();
+        settingsMenu.document.querySelector("#forge-loc-list").innerHTML = generateForgeLocs();
+        settingsMenu.document.querySelector("#forge-loc-input").value = "";
+    } else {
+        alert("Location must be between 0-299,0-299");
+    }
+}
+
+function removeForgeLocation() {
+    let location = settingsMenu.document.querySelector("#forge-loc-input").value;
+    let locs = location.split(',');
+    if (locs[0] >= 0 && locs[0] <= 299 && locs[1] >= 0 && locs[1] <= 299) {
+        if (accountSettings.forge.indexOf([zeroPad(locs[0]), zeroPad(locs[1])] > -1)) {
+            accountSettings.forge.splice(accountSettings.forge.indexOf([zeroPad(locs[0]), zeroPad(locs[1])]), 1);
+        }
+        savePlayerStats();
+        settingsMenu.document.querySelector("#forge-loc-list").innerHTML = generateForgeLocs();
+        settingsMenu.document.querySelector("#forge-loc-input").value = "";
+    } else {
+        alert("Location must be between 0-299,0-299");
+    }
+}
+
+function daForgeLocs() {
+let xloc = parseInt(accountSettings.forge[currentForgeLoc][0], 10);
+let yloc = parseInt(accountSettings.forge[currentForgeLoc][1], 10);
+let move1 = document.getElementById("no-go-loc").value;
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+    if (accountSettings.forge[currentForgeLoc] !== undefined) {
+		doAction(3, 'tele', xloc, yloc, '', true);
+		document.getElementById("no-go-loc").value = "1";
+        currentForgeLoc++;
+    }
+}
+
+function resetForgeRun() {
+    currentForgeLoc = 0;
+}
+
+function resetGlobalKings() {
+    localStorage.allowedKings = `${playerName},nobody`;
+    settingsMenu.document.querySelector("#global-allowed-kings").value = `${playerName},nobody`;
+}
+function Poker() {
+        genChat(`/poker `);
+
+}
+
+function craftUseful() {
+ let king = document.getElementById("s_King").innerText.toLowerCase();
+ let runes = document.getElementById("s_Runes").innerText.toLowerCase();
+ let item = localStorage.globalTradeitem;
+            if (s_Chat.innerHTML.indexOf("The second item must be a relic.") > -1) {
+                alert("no more relics.");
+                writeSystemMessage("Please /wipe chat in order to continue.");
+				return;
+        }
+     if (king == playerName) {
+	   if (runes > 0) {
+if(document.getElementById('general0').elements[5].value == "0")  {
+doAction(0, 'es', '0', item, '', true);
+} else {
+doAction(0, 'buy', '0', '', '', true);
+}
+}
+ else {
+        writeSystemMessage("Not your Kingdom/No runes.");
+    }
+}}
+
+function rPoker() {
+    if (!!document.querySelector("img[name=genfunpraise3]")) {
+        try {
+            $(genfunpraise3).trigger("mousedown");
+        } catch (e) {
+            writeSystemMessage(e);
+        }
+        return;
+    }}
+	function s1() {
+        try {
+            $(Gold).trigger("mousedown");
+        } catch (e) {
+            writeSystemMessage(e);
+        }
+        return;
+    }
+function Shh() {
+        genChat(`/shh `);
+
+}
+
+function Sforge() {
+let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
+chatCheck();
+if (gold < 2000000000){
+getGold();}
+else {
+doKingdom(0, 'settle', '', '', '', true);
+}
+
+}
+function Kdmenu() {
+        var select = document.getElementById('kd-builder-unit');
+		select.selectedIndex++;
+
+}
+
+function Goldmenu() {
+        var select = document.getElementById('gold-source');
+		select.selectedIndex++;
+
+}
+function resetForgeRun() {
+    currentForgeLoc = 0;
+}
+
+function generateSelectMenu(min, max, selected = 0, attack = false) {
+    let temp_html = ``;
+    if (!attack) {
+        if (max > min) {
+            for (let n = min; n <= max; n++) {
+                if (selected == n) {
+                    temp_html += `<option value='${n}' selected>${n}</option>`;
+                } else {
+                    temp_html += `<option value='${n}'>${n}</option>`;
+                }
+            }
+            return temp_html;
+        }
+    } else {
+        ['attack', 'cast', 'defend'].forEach(value => {
+            if (value == accountSettings.attack) {
+                temp_html += `<option value='${value}' selected>${value}</option>`;
+            } else {
+                temp_html += `<option value='${value}'>${value}</option>`;
+            }
+        });
+        return temp_html;
+    }
+}
+
+function randomValue(min, max) {
+    return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+function toggleGlobalSync() {
+    if (globalSync) {
+        globalSync = false;
+    } else {
+        globalSync = true;
+    }
+    writeSystemMessage(`Global sync changed to ${globalSync}, this needs to be toggled on each character you wish to sync.`);
+}
+
+function fightCheck() {
+
+    if (!globalSync) {
+        if (checkAsh) {
+            checkInventory();
+        } else {
+            burningItems = false;
+        }
+        if (!burningItems) {
+            fightLoop();
+        } else {
+            burnItems();
+        }
+    } else {
+        if (checkAsh) {
+            checkInventory();
+        }
+        if (localStorage.burnAsh != "true") {
+            fightLoop();
+        } else {
+            burnItems();
+        }
+    }
+	}
+function craftCheck() {
+    if (!globalSync) {
+        if (checkAsh) {
+            checkInventory();
+        } else {
+            burningItems = false;
+        }
+        if (!burningItems) {
+            craftlvl();
+        } else {
+            burnItems();
+        }
+    } else {
+        if (checkAsh) {
+            checkInventory();
+        }
+        if (localStorage.burnAsh != "true") {
+            craftlvl();
+        } else {
+            burnItems();
+        }
+    }
+}
+
+function fightLoop() {
+let farm = document.querySelector("#apex-farm-check").checked;
+let move1 = document.getElementById("no-go-loc").value;
+let beast = document.querySelector("#auto-beast-check").checked;
+let move = document.getElementById("beast-track").value;
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+    if (isReady() && !!document.querySelector("img[name=revive]")) {
+            $(revive).trigger("mousedown");
+        return;
+    }
+    if (manageLevel()) {
+	document.getElementById("no-go-loc").value = "1";
+        return;
+    }
+		    if (document.querySelector('#s_Response').innerText.indexOf("Enemy not found.") > -1) {
+               doAction(0, 'fight', accountSettings.mobValue[0], '', '', true);
+			   document.getElementById("no-go-loc").value = "1";			   
+        return;
+    }
+	  for (let n = 0; n < 3; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf("You cannot touch him.") > -1) {
+			document.getElementById("beast-track").value = "UNWANTED";
+			document.getElementById("beast-track").value = "no touch";
+			stop();
+             return;
+            }
+        } catch (e) {
+
+        }
+    }
+	    if (isReady() && move1 == "2"  && !!document.querySelector("img[name=gattackattack]")) {		
+            attack();
+document.getElementById("no-go-loc").value = "1";
+        return;
+    }
+	    if (!!document.querySelector("img[name=gattackattack]")) {
+            attack();
+document.getElementById("no-go-loc").value = "1";
+        return;
+    }
+	if (beast){
+      	  if (move == ('move1')||move == ('move2')||move == ('move3')||move == ('move4')||move == ('move5')||move == ('move6')||move == ('move7')||move == ('move8')||move == ('beast')) {
+      autobeastHunter();  
+        return;
+		}
+    for (let n = 0; n < 5; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf("has awoken a beast ") > -1) {
+             autobeastHunter();  
+				document.getElementById("beast-track").value = "beast";
+                    break;
+                }
+            } catch (e) {
+
+            }
+        }
+}
+
+		if (farm && jobType == "kdrun"){
+	               doAction(0, 'fight', accountSettings.mobValue[1], '', '', true);	   
+		document.getElementById("no-go-loc").value = "1";		
+        return;
+    } 
+	else {
+	if (farm){
+        doAction(0, 'fight', accountSettings.mobValue[0], '', '', true);
+	document.getElementById("no-go-loc").value = "3";	
+		return;
+		}
+		if (isReadyThree()&& jobType == "kdrun"){
+     doAction(0, 'fight', accountSettings.mobValue[1], '', '', true);
+	document.getElementById("no-go-loc").value = "3";
+	}
+	else {
+			if (isReadyThree()){
+     doAction(0, 'fight', accountSettings.mobValue[0], '', '', true);
+	document.getElementById("no-go-loc").value = "3";
+	}
+	
+		
+		}
+
+}
+}
+function duelLoop() {
+if (document.getElementById(`general0`).elements[5].value <= 0){
+doAction(0, 'duel', 1, '', '', false);
+return;
+}
+    if (!!document.querySelector("img[name=revive]")) {
+            $(revive).trigger("mousedown");
+        return;
+    }
+	
+    if (document.querySelector('#s_Response').innerText.indexOf("already slain by another player.") > -1) {
+               doAction(0, 'duel', 1, '', '', true);
+			   
+        return;
+    }	
+	    if (document.querySelector('#s_Response').innerText.indexOf("You or your enemy has moved...lost target.") > -1) {
+               doAction(0, 'duel', 1, '', '', true);
+			   
+        return;
+    }	
+    if (document.querySelector('#s_Response').innerText.indexOf("Enemy not found.") > -1) {
+               doAction(0, 'duel', 1, '', '', true);
+			   
+        return;
+    }
+	
+    if (!!document.querySelector("img[name=gattackattack]")) {
+            attack();
+    }
+		else {
+                doAction(0, 'duel', 1, '', '', true);
+			}	
+
+}
+
+function duelLoop1() {
+
+if (document.getElementById(`general0`).elements[5].value <= 0){
+doAction(0, 'duel', 1, '', '', false);
+return;
+}
+    if (!!document.querySelector("img[name=revive]")) {
+            $(revive).trigger("mousedown");
+        return;
+    }
+
+    if (document.querySelector('#s_Response').innerText.indexOf("already slain by another player.") > -1) {
+               doAction(0, 'duel', 0, '', '', true);
+			   
+        return;
+    }	
+	    if (document.querySelector('#s_Response').innerText.indexOf("You or your enemy has moved...lost target.") > -1) {
+               doAction(0, 'duel', 0, '', '', true);
+			   
+        return;
+    }	
+    if (document.querySelector('#s_Response').innerText.indexOf("Enemy not found.") > -1) {
+               doAction(0, 'duel', 0, '', '', true);
+			   
+        return;
+    }
+	
+	    if (!!document.querySelector("img[name=gattackattack]")) {
+            attack();
+document.getElementById("no-go-loc").value = "1";
+        return;
+    }
+		else {
+                doAction(0, 'duel', 0, '', '', true);
+}
+}
+function autoduelLoop() {
+let move1 = document.getElementById("no-go-loc").value;
+let itemnum = accountSettings.mobValue[5];
+let fighter = parseInt(itemnum, 10) + 1;
+let fighter1 = parseInt(itemnum, 10) - 1;
+let current = document.getElementById(`general0`).elements[5].innerText
+
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+
+if (document.getElementById(`general0`).elements[5].value <= 0){
+doAction(0, 'duel', 0, '', '', false);
+accountSettings.mobValue[5] = 0;
+savePlayerStats();
+return;
+}
+	if (checkavoid()){
+doAction(0, 'duel', itemnum, '', '', false);;
+		document.getElementById("no-go-loc").value = "1";
+accountSettings.mobValue[5] = fighter;
+savePlayerStats();
+return;
+}
+    if (!!document.querySelector("img[name=revive]")) {
+            $(revive).trigger("mousedown");
+        return;
+    }
+	    if (checkavoid1() && document.querySelector('#s_Response').innerText.indexOf("You or your enemy has moved...lost target.") > -1) {
+               doAction(0, 'duel', fighter1, '', '', true);
+		document.getElementById("no-go-loc").value = "3";			   
+        return;
+    }
+    if (checkavoid1() && document.querySelector('#s_Response').innerText.indexOf("already slain by another player.") > -1) {
+               doAction(0, 'duel', fighter1, '', '', true);
+		document.getElementById("no-go-loc").value = "3";	   
+        return;
+    }	
+	
+    if (checkavoid1() && document.querySelector('#s_Response').innerText.indexOf("Enemy not found.") > -1) {
+               doAction(0, 'duel', fighter1, '', '', true);
+			   console.log(itemnum);
+			 document.getElementById("no-go-loc").value = "3";
+        return;
+    }
+	    if (isReady() && !!document.querySelector("img[name=gattackattack]")) {
+            attack();
+document.getElementById("no-go-loc").value = "1";
+        return;
+    }
+			else {
+			if (checkavoid1()){
+                doAction(0, 'duel', fighter1, '', '', true);
+				document.getElementById("no-go-loc").value = "3";
+			}}
+
+}
+
+function autoduelLoop1() {
+let move1 = document.getElementById("no-go-loc").value;
+
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+if (document.querySelector('#s_Loc').innerText.indexOf("042,Sur,149") > -1 || document.querySelector('#s_Loc').innerText.indexOf("000,Sur,000") > -1) {
+return;
+}
+if (document.getElementById(`general0`).elements[5].value <= 0 || document.getElementById(`general0`).elements[5].value == 'NOBODY'){
+doAction(0, 'duel', 0, '', '', false);
+return;
+}
+    if (!!document.querySelector("img[name=revive]")) {
+            $(revive).trigger("mousedown");
+        return;
+    }
+	
+    if (document.querySelector('#s_Response').innerText.indexOf("already slain by another player.") > -1) {
+               doAction(0, 'duel', 0, '', '', true);
+		document.getElementById("no-go-loc").value = "3";	   
+        return;
+    }	
+	    if (document.querySelector('#s_Response').innerText.indexOf("You or your enemy has moved...lost target.") > -1) {
+               doAction(0, 'duel', 0, '', '', true);
+		document.getElementById("no-go-loc").value = "3";			   
+        return;
+    }	
+    if (document.querySelector('#s_Response').innerText.indexOf("Enemy not found.") > -1) {
+               doAction(0, 'duel', 0, '', '', true);
+			 document.getElementById("no-go-loc").value = "3";
+        return;
+    }
+	    if (isReady() && !!document.querySelector("img[name=gattackattack]")) {
+            attack();
+document.getElementById("no-go-loc").value = "1";
+        return;
+    }
+		else {
+                doAction(0, 'duel', 0, '', '', true);
+				document.getElementById("no-go-loc").value = "3";
+			}	
+
+}
+
+function moveRunes() {
+    let runes = parseInt(document.getElementById("s_Runes").innerText.replace(/\,/g, ""), 10);
+    let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ""), 10);
+    let xLoc = document.getElementById("x-action-loc");
+    let zLoc = document.getElementById("z-action-loc");
+    let yLoc = document.getElementById("y-action-loc");
+    if (checkKing()) {
+        runeScan();
+		chatCheck();
+        if (gold == 2000000000 || gold >= 1000000000) {
+            if (gold < 2000000000) {
+                genChat(`/sr ${zeroPad(xLoc.value)},${zLoc.value},${zeroPad(yLoc.value)}`);
+            } else {
+                genChat(`/br ${zeroPad(xLoc.value)},${zLoc.value},${zeroPad(yLoc.value)}`);
+            }
+        } else {
+            if (runes >= 0) {
+                if ((gold > 1000100000 && gold !== 2000000000) || (gold > 1000000 && gold < 1000000000)) {
+                    genChat(`/dt`);
+				return;				
+                } else {
+                 getGold();
+                }
+                return;
+            } else {
+                writeSystemMessage("Kingdom is at or below limit");
+            }
+        }
+    }
+}
+function runeScan() {
+    let brLimit = document.getElementById("br-limit").value;
+    let securityOutput = document.getElementById('s_Response');
+	let min_x = parseInt(accountSettings.plexBorder[0], 10);
+    let min_y = parseInt(accountSettings.plexBorder[1], 10);
+    let max_x = parseInt(accountSettings.plexBorder[2], 10);
+    let max_y = parseInt(accountSettings.plexBorder[3], 10);
+	
+	if (document.getElementById("x-action-loc").value == max_x && document.getElementById("y-action-loc").value == max_y){
+	writeSystemMessage("Max locs");
+				   localStorage.globalmasSec = "1";
+	return;
+	}
+	if (securityOutput.innerText.indexOf("You must be the king to do that.") > -1 && accountSettings.mobValue[3] == 1) {
+        securityOutput.innerText = "";
+			if (document.getElementById("y-action-loc").value == max_y){
+				                    let newTargetLoc = zeroPad(parseInt(document.getElementById("x-action-loc").value, 10) + 1);
+                    document.getElementById("x-action-loc").value = newTargetLoc;
+					document.getElementById("y-action-loc").value = min_y;
+                    return;
+                }
+        let newTargetLoc = zeroPad(parseInt(document.getElementById("y-action-loc").value, 10) + 1);
+        document.getElementById("y-action-loc").value = newTargetLoc;
+        return;
+    }
+	
+if (securityOutput.innerText.indexOf("You must be the king to do that.") > -1) {
+        securityOutput.innerText = "";
+			if (document.getElementById("x-action-loc").value == max_x){
+				                    let newTargetLoc = zeroPad(parseInt(document.getElementById("y-action-loc").value, 10) + 1);
+                    document.getElementById("y-action-loc").value = newTargetLoc;
+					document.getElementById("x-action-loc").value = min_x;
+                    return;
+                }
+        let newTargetLoc = zeroPad(parseInt(document.getElementById("x-action-loc").value, 10) + 1);
+        document.getElementById("x-action-loc").value = newTargetLoc;
+        return;
+    }
+    for (let n = 0; n != 3; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf(`total runes.`) > -1 && accountSettings.mobValue[3] == 1) {
+                let targetRuneCount = parseInt(s_Chat.childNodes[n].innerHTML.substring(s_Chat.childNodes[n].innerHTML.indexOf("</a> ") + 5, s_Chat.childNodes[n].innerHTML.indexOf(" total")), 10);
+                if (parseInt(targetRuneCount, 10) >= parseInt(brLimit, 10)) {
+				if (document.getElementById("y-action-loc").value == max_y){
+				                    let newTargetLoc = zeroPad(parseInt(document.getElementById("x-action-loc").value, 10) + 1);
+                    document.getElementById("x-action-loc").value = newTargetLoc;
+					document.getElementById("y-action-loc").value = min_y;
+                    return;
+                }
+                    s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("runes.", "runes!");
+                    let newTargetLoc = zeroPad(parseInt(document.getElementById("y-action-loc").value, 10) + 1);
+                    document.getElementById("y-action-loc").value = newTargetLoc;
+                    return;
+                }
+            }
+            if (s_Chat.childNodes[n].innerHTML.indexOf("This kingdom has too many runes.") > -1 && accountSettings.mobValue[3] == 1) {
+                s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("runes.", "runes!");
+							if (document.getElementById("y-action-loc").value == max_y){
+				                    let newTargetLoc = zeroPad(parseInt(document.getElementById("x-action-loc").value, 10) + 1);
+                    document.getElementById("x-action-loc").value = newTargetLoc;
+					document.getElementById("y-action-loc").value = min_y;
+                    return;
+                }
+                let newTargetLoc = zeroPad(parseInt(document.getElementById("y-action-loc").value, 10) + 1);
+                document.getElementById("y-action-loc").value = newTargetLoc;
+                return;
+            }
+            if (s_Chat.childNodes[n].innerHTML.indexOf(`total runes.`) > -1 && accountSettings.mobValue[3] == 0) {
+                let targetRuneCount = parseInt(s_Chat.childNodes[n].innerHTML.substring(s_Chat.childNodes[n].innerHTML.indexOf("</a> ") + 5, s_Chat.childNodes[n].innerHTML.indexOf(" total")), 10);
+                if (parseInt(targetRuneCount, 10) >= parseInt(brLimit, 10)) {
+				if (document.getElementById("x-action-loc").value == max_x){
+				                    let newTargetLoc = zeroPad(parseInt(document.getElementById("y-action-loc").value, 10) + 1);
+                    document.getElementById("y-action-loc").value = newTargetLoc;
+					document.getElementById("x-action-loc").value = min_x;
+                    return;
+                }
+                    s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("runes.", "runes!");
+                    let newTargetLoc = zeroPad(parseInt(document.getElementById("x-action-loc").value, 10) + 1);
+                    document.getElementById("x-action-loc").value = newTargetLoc;
+                    return;
+                }
+            }
+            if (s_Chat.childNodes[n].innerHTML.indexOf("This kingdom has too many runes.") > -1 && accountSettings.mobValue[3] == 0) {
+                s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("runes.", "runes!");
+					if (document.getElementById("x-action-loc").value == max_x){
+				    let newTargetLoc = zeroPad(parseInt(document.getElementById("y-action-loc").value, 10) + 1);
+                    document.getElementById("y-action-loc").value = newTargetLoc;
+					document.getElementById("x-action-loc").value = min_x;
+                    return;
+                }
+                let newTargetLoc = zeroPad(parseInt(document.getElementById("x-action-loc").value, 10) + 1);
+                document.getElementById("x-action-loc").value = newTargetLoc;
+                return;
+            }
+        } catch (e) {
+
+        }
+    }
+}
+
+function manageLevel() {
+let move1 = document.getElementById("no-go-loc").value;
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+if (isReadyThree()){
+    if (manageApex) {
+        if (!!document.querySelector("img[name=level0]")) {
+            if (apexStatus == "equipped") {
+			document.getElementById("no-go-loc").value = "1";
+                train();
+                return true;
+            } else {
+						document.getElementById("no-go-loc").value = "1";
+                doAction(0, "equip", "10054", 5, "", true);
+                apexStatus = "equipped";
+                return true;
+            }
+        } else {
+            let playerLevel = parseInt(
+                document.getElementById("s_login").innerText.replace(/\,/g, ""),
+                10
+            );
+            if (apexStatus == "equipped") {
+						document.getElementById("no-go-loc").value = "1";
+                doAction(0, "equip", "10054", 11, "", true);
+                apexStatus = "unequipped";
+                return true;
+            } else {
+                return false;
+            }
+        }
+    } else {
+        if (!!document.querySelector("img[name=level0]")) {
+            train();
+			document.getElementById("no-go-loc").value = "1";
+            return true;
+        } else {
+            return false;
+        }
+    }
+	}
+	}
+
+
+
+function findApexStatus() {
+    doAction(0, "equip", "10054", 5, "", false);
+    let elm = document.getElementById(`general0`).elements[5];
+    let apexIndex = elm.selectedIndex;
+    let slotText = elm.options[apexIndex].innerText;
+    if (slotText.indexOf("Apex") == -1) {
+        return "none";
+    }
+    if (slotText.indexOf("EQUIPPED") > -1) {
+        return "equipped";
+    } else {
+        return "unequipped";
+    }
+}
+
+function toggleApexManagement() {
+    apexStatus = findApexStatus();
+    setTimeout(() => {
+        if (manageApex) {
+            manageApex = false;
+        } else {
+            manageApex = true;
+            if (apexStatus == "none") {
+                manageApex = false;
+            }
+        }
+        writeSystemMessage(`Apex management enabled: ${manageApex}`);
+    }, 500);
+}
+
+function attack() {
+if (isReady()){
+        switch (accountSettings.attack) {
+		            case "attack":
+                try {
+                    $(gattackattack).trigger("mousedown");
+                    return;
+                } catch (e) {}
+                break;
+				
+            case "defend":
+                try {
+                    $(gattackdefend).trigger("mousedown");
+                    return;
+                } catch (e) {}
+                break;
+
+            case "cast":
+                try {
+                    $(gattackcast).trigger("mousedown");
+                    return;
+                } catch (e) {}
+                break;
+        }
+}
+}
+function train() { 
+let Str = parseInt(document.getElementById("s_Str").innerText.replace(/\,/g, ""), 10);
+let Dex = parseInt(document.getElementById("s_Dex").innerText.replace(/\,/g, ""), 10);
+let Agi = parseInt(document.getElementById("s_Agi").innerText.replace(/\,/g, ""), 10);
+let Dur = parseInt(document.getElementById("s_Dur").innerText.replace(/\,/g, ""), 10);
+let Ntl = parseInt(document.getElementById("s_Ntl").innerText.replace(/\,/g, ""), 10);
+let Cnc = parseInt(document.getElementById("s_Cnc").innerText.replace(/\,/g, ""), 10);
+let Cnt = parseInt(document.getElementById("s_Cnt").innerText.replace(/\,/g, ""), 10);
+let Str1 = accountSettings.tpLocs[9];
+let Dex1 = accountSettings.tpLocs[10];
+let Agi1 = accountSettings.tpLocs[11];
+let Dur1 = accountSettings.tpLocs[12];
+let Ntl1 = accountSettings.tpLocs[13];
+let Cnc1 = accountSettings.tpLocs[14];
+let Cnt1 = accountSettings.tpLocs[15];
+let Str3 = $(level0);
+let Dex3 = $(level1);
+let Agi3 = $(level2);
+let Dur3 = $(level3);
+let Ntl3 = $(level4);
+let Cnc3 = $(level5);
+let Cnt3 = $(level6);
+let stats = Cnt + Cnc + Ntl + Dur + Agi + Dex + Str;
+var array = [
+  {x: Str, y: Str1, z: Str3},
+  {x: Dex, y: Dex1, z: Dex3},
+  {x: Agi, y: Agi1, z: Agi3},
+  {x: Dur, y: Dur1, z: Dur3},
+  {x: Ntl, y: Ntl1, z: Ntl3},
+  {x: Cnc, y: Cnc1, z: Cnc3},
+  {x: Cnt, y: Cnt1, z: Cnt3}
+];
+array.sort(function(a, b) {
+  return a.y - b.y;
+});
+    if (stats * array[0].y >= array[0].x) {
+        try {
+            array[0].z.trigger("mousedown");
+            return;
+        } catch (e) { }
+    } else
+    if (stats * array[1].y >= array[1].x) {
+        try {
+            array[1].z.trigger("mousedown");
+            return;
+        } catch (e) { }
+    } else
+    if (stats * array[2].y >= array[2].x) {
+        try {
+            array[2].z.trigger("mousedown");
+            return;
+        } catch (e) { }
+    } else
+    if (stats * array[3].y >= array[3].x) {
+        try {
+            array[3].z.trigger("mousedown");
+            return;
+        } catch (e) { }
+    } else
+    if (stats * array[4].y >= array[4].x) {
+        try {
+            array[4].z.trigger("mousedown");
+            return;
+        } catch (e) { }
+    } else
+    if (stats * array[5].y >= array[5].x) {
+        try {
+            array[5].z.trigger("mousedown");
+            return;
+        } catch (e) { }
+    } else
+    if (stats * array[6].y >= array[6].x) {
+        try {
+            array[6].z.trigger("mousedown");
+            return;
+        } catch (e) { }
+    }
+	}
+function toggleLevelHotkey() {
+    if (task != "ash") {
+        task = "ash";
+        document.getElementById("hk-active1").innerText = "true";
+        document.getElementById("hk-active2").innerText = "true";
+    } else {
+        task = "none";
+        document.getElementById("hk-active1").innerText = "false";
+        document.getElementById("hk-active2").innerText = "false";
+    }
+	}
+
+function toggleDuelHotkey() {
+    if (task != "duel") {
+        task = "duel";
+        document.getElementById("hk-active4").innerText = "true";
+		document.getElementById("hk-active5").innerText = "false";
+    } else {
+        task = "none";
+        document.getElementById("hk-active4").innerText = "false";
+    }
+}
+function toggleacumanHotkey() {
+    if (task != "acuman") {
+        task = "acuman";
+        document.getElementById("hk-active5").innerText = "true";
+		document.getElementById("hk-active4").innerText = "false";
+    } else {
+        task = "none";
+        document.getElementById("hk-active5").innerText = "false";
+    }
+}
+
+function toggleRuneMenu() {
+    hideMenus();
+    document.getElementById("rune-menu").hidden = false;
+	document.getElementById("da-menu").hidden = false;
+        if (accountSettings.peStats[0] !== "UNSET") {
+            document.querySelector("#x-da-loc").value = accountSettings.peStats[0].substring(0, 3);
+            document.querySelector("#z-da-loc").value = accountSettings.peStats[0].substring(4, 7);
+            document.querySelector("#y-da-loc").value = accountSettings.peStats[0].substring(8, 11);
+        }
+}
+
+function toggleProfitMenu() {
+    hideMenus();
+    document.getElementById("profit-menu").hidden = false;
+}
+
+function toggleBezzHotkey() {
+    if (task != "kingdom") {
+        task = "kingdom";
+        document.getElementById("hk-active3").innerText = "true";
+    } else {
+        task = "none";
+        document.getElementById("hk-active3").innerText = "false";
+    }
+}
+function toggleruneHotkey() {
+    if (task != "rune") {
+        task = "rune";
+        document.getElementById("hk-active6").innerText = "true";
+    } else {
+        task = "none";
+        document.getElementById("hk-active6").innerText = "false";
+    }
+}
+
+function toggleprofitHotkey() {
+    if (task != "profit") {
+        task = "profit";
+        document.getElementById("hk-active7").innerText = "true";
+    } else {
+        task = "none";
+        document.getElementById("hk-active7").innerText = "false";
+    }
+}
+
+function toggleLevel() {
+    document.getElementById("ash-farm").hidden = false;
+    document.getElementById("kingdom-farm").hidden = true;
+    document.getElementById("kingdom-menu").hidden = true;
+    document.getElementById("nuke-menu").hidden = true;
+    document.getElementById("da-menu").hidden = true;
+	document.getElementById("duel").hidden = true;
+	document.getElementById("acuman").hidden = true;
+	    document.getElementById("rune-menu").hidden = true;
+}
+function toggleDuel() {
+    document.getElementById("ash-farm").hidden = true;
+    document.getElementById("kingdom-farm").hidden = true;
+    document.getElementById("kingdom-menu").hidden = true;
+    document.getElementById("nuke-menu").hidden = true;
+    document.getElementById("da-menu").hidden = true;
+	document.getElementById("duel").hidden = false;
+	document.getElementById("acuman").hidden = true;
+	    document.getElementById("rune-menu").hidden = true;
+}
+
+function hideMenus() {
+    document.getElementById("ash-farm").hidden = true;
+    document.getElementById("kingdom-farm").hidden = true;
+    document.getElementById("kingdom-menu").hidden = true;
+    document.getElementById("nuke-menu").hidden = true;
+    document.getElementById("da-menu").hidden = true;
+    document.getElementById("rune-menu").hidden = true;
+	document.getElementById("profit-menu").hidden = true;
+	document.getElementById("duel").hidden = true;
+	document.getElementById("acuman").hidden = true;
+}
+
+function toggleAcuman() {
+    document.getElementById("ash-farm").hidden = true;
+    document.getElementById("kingdom-farm").hidden = true;
+    document.getElementById("kingdom-menu").hidden = true;
+    document.getElementById("nuke-menu").hidden = true;
+    document.getElementById("da-menu").hidden = true;
+	document.getElementById("duel").hidden = true;
+	document.getElementById("acuman").hidden = false;
+	    document.getElementById("rune-menu").hidden = true;
+}
+
+
+function toggleBezz() {
+    document.getElementById("ash-farm").hidden = true;
+    document.getElementById("kingdom-farm").hidden = false;
+    document.getElementById("kingdom-menu").hidden = true;
+    document.getElementById("nuke-menu").hidden = true;
+    document.getElementById("da-menu").hidden = true;
+	document.getElementById("duel").hidden = true;
+	document.getElementById("acuman").hidden = true;
+	    document.getElementById("rune-menu").hidden = true;
+}
+
+function move() {
+let move1 = document.getElementById("no-go-loc").value
+    let loc_x = parseInt(s_Loc.innerText.split(",")[0], 10);
+    let loc_y = parseInt(s_Loc.innerText.split(",")[2], 10);
+    let min_x = parseInt(accountSettings.plexBorder[0], 10);
+    let min_y = parseInt(accountSettings.plexBorder[1], 10);
+    let max_x = parseInt(accountSettings.plexBorder[2], 10);
+    let max_y = parseInt(accountSettings.plexBorder[3], 10);
+	let yInc = document.querySelector("#inc-y-location");
+	
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+
+if (isReady()){
+    if (loc_x < min_x || loc_y < min_y || loc_x > max_x || loc_y > max_y) {
+        writeSystemMessage("Outside of plex boundaries not doing anything");
+        return;
+    }
+      if (yInc.checked == true || accountSettings.mobValue[3] == 1) {
+     if (min_x % 2 == 0) {
+        if (loc_x % 2 == 0) {
+            if (loc_y == max_y) {
+                if (loc_x + 1 <= max_x) {
+                    doAction(0, "move", 2, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            } else {
+                if (loc_y + 1 <= max_y) {
+                    doAction(0, "move", 0, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            }
+        } else {
+            if (loc_y == min_y) {
+                if (loc_x + 1 <= max_x) {
+                    doAction(0, "move", 2, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            } else {
+                if (loc_y - 1 >= min_y) {
+                    doAction(0, "move", 1, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            }
+        }
+    } else {
+        if (loc_x % 2 == 0) {
+            if (loc_y == min_y) {
+                if (loc_x + 1 <= max_x) {
+                    doAction(0, "move", 2, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            } else {
+                if (loc_y - 1 >= min_y) {
+                    doAction(0, "move", 1, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            }
+        } else {
+            if (loc_y == max_y) {
+                if (loc_x + 1 <= max_x) {
+                    doAction(0, "move", 2, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            } else {
+                if (loc_y + 1 <= max_y) {
+                    doAction(0, "move", 0, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            }
+        }
+    }
+	}
+	    if (min_y % 2 == 0) {
+        if (loc_y % 2 == 0) {
+            if (loc_x == max_x) {
+                if (loc_y + 1 <= max_y) {
+                    doAction(0, "move", 0, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            } else {
+                if (loc_x + 1 <= max_x) {
+                    doAction(0, "move", 2, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            }
+        } else {
+            if (loc_x == min_x) {
+                if (loc_y + 1 <= max_y) {
+                    doAction(0, "move", 0, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            } else {
+                if (loc_x - 1 >= min_x) {
+                    doAction(0, "move", 3, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            }
+        }
+    } else {
+        if (loc_y % 2 == 0) {
+            if (loc_x == min_x) {
+                if (loc_y + 1 <= max_y) {
+                    doAction(0, "move", 0, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            } else {
+                if (loc_x - 1 >= min_x) {
+                    doAction(0, "move", 3, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            }
+        } else {
+            if (loc_x == max_x) {
+                if (loc_y + 1 <= max_y) {
+                    doAction(0, "move", 0, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            } else {
+                if (loc_x + 1 <= max_x) {
+                    doAction(0, "move", 2, '', '', true);
+					document.getElementById("no-go-loc").value = "1";
+                    return;
+                } else {
+                    writeSystemMessage("Move would result in placing you outside of plex borders, not doing.");
+                    cornerReturn();
+					stop();
+                }
+            }
+        }
+    }
+}}
+
+function kingdomBezz() {
+    let king = document.getElementById("s_King").innerText.toLowerCase();
+    let tres = parseInt(document.getElementById("s_Tres").innerText.replace(/\,/g, ""), 10);
+
+    if (bezzChatCheck()) {
+        if (king == playerName) {
+            if (tres == 2000000000) {
+                genChat(`/pe ${accountSettings.peStats[0]}`);
+                return;
+            } else {
+        move();
+
+                return;
+            }
+        } else {
+            move();
+            return;
+        }
+    } else {
+        writeSystemMessage("Error trying to public embezzle. Please check whats wrong.");
+    }
+}
+
+
+document.getElementById(`general0`).elements[5].value
+function cornerReturn() {
+    if (confirm("Return to plex corner?")) {
+        doAction(0, 'tele', parseInt(accountSettings.plexBorder[0], 10), parseInt(accountSettings.plexBorder[1], 10), '', true);
+    }
+}
+
+function bezzChatCheck() {
+    for (let n = 0; n != 3; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf(`999 total runes,`) > -1) {
+                s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("runes,", "runes");
+                updatePeLoc();
+                return true;
+            }
+            if (s_Chat.childNodes[n].innerHTML.indexOf("You must be the king to do that.") > -1) {
+                s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("that.", "that!");
+                return false;
+            }
+            if (s_Chat.childNodes[n].innerHTML.indexOf("The destination kingdom has too many runes.") > -1) {
+                s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("runes.", "runes!");
+                updatePeLoc();
+                return false;
+            }
+            if (s_Chat.childNodes[n].innerHTML.indexOf("The destination kingdom is not a public rune accepting kingdom.") > -1) {
+                s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("kingdom.", "kingdom!");
+                return false;
+            }
+            if (s_Chat.childNodes[n].innerHTML.indexOf("Destination cannot be the same as the current kingdom.") > -1) {
+                s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("kingdom.", "kingdom!");
+                move();
+                return false;
+            }
+        } catch (e) {
+
+        }
+    }
+    return true;
+}
+
+function updatePeLoc() {
+    let locs = accountSettings.peStats[0].split(",");
+	if (accountSettings.mobValue[3] == 1) {
+	locs[2] = parseInt(locs[2], 10) + 1;
+	accountSettings.peStats[0] = `${zeroPad(locs[0])},${locs[1]},${zeroPad(locs[2])}`;
+	}
+	else {
+    locs[0] = parseInt(locs[0], 10) + 1;
+    accountSettings.peStats[0] = `${zeroPad(locs[0])},${locs[1]},${zeroPad(locs[2])}`;
+	}
+}
+
+
+function skillmin() {
+doAction(0, 'skills', 0, '0', '', true);
+}
+
+function skillmax() {
+doAction(0, 'skills', 0, '99', '', true);
+}
+
+function toggleIgnoreQty() {
+    if (ignoreQty) {
+        ignoreQty = false;
+    } else {
+        ignoreQty = true;
+    }
+}
+
+function toggleIgnoreTreb() {
+    if (ignoreTreb) {
+        ignoreTreb = false;
+    } else {
+        ignoreTreb = true;
+    }
+}
+
+function nukeKeyToggler() {
+    if (nukeKeysEnabled) {
+        nukeKeysEnabled = false;
+    } else {
+        nukeKeysEnabled = true;
+    }
+    document.querySelector("#hot-key-status").innerText = nukeKeysEnabled;
+}
+
+function build_attack(unit, direction) {
+    chatCheck();
+    if (document.getElementById("s_King").innerText.toLowerCase() == playerName) {
+        if (parseInt(document.getElementById("s_Food").innerText.replace(/\,/g, ''), 10) == 2000000000) {
+            switch (unit) {
+                case 1:
+                    if (isReadyThree() && parseInt(document.getElementById("s_Soldiers").innerText.replace(/\,/g, ''), 10) == 2000000000 || ignoreQty) {
+                        doKingdom(0, 'assault', unit, direction, '', true);
+						return;
+                    } else {
+                        if (parseInt(document.getElementById("s_Gold").innerText.replace && (/\,/g, ''), 10) >= 0  && parseInt(document.getElementById("s_Soldiers").innerText.replace(/\,/g, ''), 10) < 2000000000 || ignoreQty) {
+                            buyArmy();
+                        }
+                    }
+                    break;
+                case 2:
+                    if (isReadyThree() && parseInt(document.getElementById("s_Archers").innerText.replace(/\,/g, ''), 10) == 2000000000 || ignoreQty) {
+                        doKingdom(0, 'assault', unit, direction, '', true);
+						return;
+                    } else {
+                        if (parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10) >= 0 && parseInt(document.getElementById("s_Archers").innerText.replace(/\,/g, ''), 10) < 2000000000 || ignoreQty) {
+                             buyArmy();
+                        }
+                    }
+                    break;
+                case 3:
+                    if (isReadyThree() && parseInt(document.getElementById("s_Catapults").innerText.replace(/\,/g, ''), 10) == 2000000000 || ignoreQty) {
+                        doKingdom(0, 'assault', unit, direction, '', true);
+						return;
+                    } else {
+                        if (isReadyThree() && parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10) >= 0 && parseInt(document.getElementById("s_Catapults").innerText.replace(/\,/g, ''), 10) < 2000000000 || ignoreQty) {
+                             buyArmy();
+                        }
+                    }
+                    break;
+                case 4:
+                    if (isReadyThree() && parseInt(document.getElementById("s_Trebuchets").innerText.replace(/\,/g, ''), 10) == 2000000000 || ignoreQty || ignoreTreb) {
+                        doKingdom(0, 'assault', unit, direction, '', true);
+						return;
+                    } else {
+                        if (parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10) >= 0 && parseInt(document.getElementById("s_Trebuchets").innerText.replace(/\,/g, ''), 10) < 2000000000 || ignoreQty || ignoreTreb) {
+                            buyArmy();
+                        }
+                    }
+                    break;
+                case 0:
+                    if (isReadyThree() && parseInt(document.getElementById("s_Soldiers").innerText.replace(/\,/g, ''), 10) == 2000000000 && parseInt(document.getElementById("s_Archers").innerText.replace(/\,/g, ''), 10) == 2000000000 && parseInt(document.getElementById("s_Catapults").innerText.replace(/\,/g, ''), 10) == 2000000000 && (parseInt(document.getElementById("s_Trebuchets").innerText.replace(/\,/g, ''), 10) == 2000000000 || ignoreTreb) || ignoreQty) {
+                        doKingdom(0, 'assault', unit, direction, '', true);
+						return;
+                    } else {
+                        if (parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10) >= 0 ) {
+                            buyArmy();
+                        }
+                    }
+                    break;
+            }
+        } else {
+            if (parseInt(document.getElementById("s_Food").innerText.replace(/\,/g, ''), 10) < 2000000000) {
+                buyFood();
+            }
+        }
+    } else {
+        if (isReady() && document.getElementById("s_King").innerText.toLowerCase() == "nobody") {
+            doKingdom(0, 'settle', '', '', '', true);
+        } else {
+            writeSystemMessage("You do not own this kingdom. Check location.");
+        }
+    }
+}
+
+function chanceEeot() {
+    let runes = parseInt(document.getElementById("s_Runes").innerText, 10);
+    if (document.getElementById("s_Loc").innerText.split(",")[1] !== "For") {
+        //Regular
+        if (runes <= 989) {
+            genChat("/chance");
+			genChat("/chance");
+			genChat("/chance");
+        } else {
+            writeSystemMessage("Too many runes in kingdom, refusing to chance.");
+        }
+    } else {
+        //Forge
+        writeSystemMessage("Forge kingdoms cannot be chanced.");
+    }
+}
+
+function nrage() {
+    if (securityCheck()) {
+        if (document.getElementById("s_King").innerText.toLowerCase() == playerName) {
+            if (parseInt(document.getElementById("s_Runes").innerText, 10) >= 10) {
+                genChat("/nrage");
+            } else {
+                getGold();
+            }
+        } else {
+            writeSystemMessage("You do not own this kingdom. Check location.");
+        }
+    }
+}
+
+function getGold() {
+    let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
+    let tres = parseInt(document.getElementById("s_Tres").innerText.replace(/\,/g, ''), 10);
+    let xLoc = document.querySelector("#x-da-loc");
+    let yLoc = document.querySelector("#y-da-loc");
+    let zLoc = document.querySelector("#z-da-loc");
+    let noLoc = document.querySelector("#inc-no-location").checked;
+    let goldSource = document.querySelector("#gold-source").value;
+	let forgeMin = parseInt(document.querySelector("#forge-tres-min").value, 10);
+	
+	
+    for (let n = 0; n < 3; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf("You must be level 2,000 to discard trivial gold.") > -1) {
+			doKingdom(0, 'pay', '', '', gold, true);
+            }
+        } catch (e) {
+
+        }
+    }
+    if ((gold > 1001000000 && gold !== 2000000000) || (gold > 1000000 && gold < 1000000000)) {
+        genChat(`/dt`);
+        return;
+    }
+    if (goldSource == "da" && !noLoc) {
+        if (document.getElementById("s_Loc").innerText.toLowerCase() == `${xLoc.value},${zLoc.value},${yLoc.value}`) {
+            if (gold <= 999999) {
+                genChat(`/da`);
+            } else {
+                if (gold >= 1000000000 && gold < 1001000000) {
+                    genChat(`/al`);
+                }
+            }
+        } else {
+            if (gold <= 999999) {
+                genChat(`/da ${xLoc.value},${zLoc.value},${yLoc.value}`);
+            } else {
+                if (gold >= 1000000000 && gold < 101000000) {
+                    genChat(`/sa ${xLoc.value},${zLoc.value},${yLoc.value}`);
+                }
+            }
+        }
+    }
+    if (goldSource == "bezz") {
+        if (playerName == document.getElementById("s_King").innerText.toLowerCase()) {
+            let goldNeeded = 2000000000 - gold;
+			if (tres < forgeMin) {
+			writeSystemMessage("Treasure to low.");
+			daForgeLocs();
+			return;
+			}
+            if (tres >= goldNeeded) {
+                if (document.getElementById("s_Loc").innerText.split(",")[1] !== "For") {
+                    doKingdom(1, 'embezzle', '', '', goldNeeded, true);
+					document.getElementById("no-go-loc").value = "1";
+                } else {
+                    doKingdom(1, 'embezzle', '', '', 2000000000, true);
+					document.getElementById("no-go-loc").value = "1";
+                }
+            } else {
+                if (tres > 2000) {
+                    doKingdom(1, 'embezzle', '', '', 2000000000, true);
+					document.getElementById("no-go-loc").value = "1";
+                }
+            }
+        } else {
+            writeSystemMessage("You do not own this kingdom.");
+        }
+    }
+}
+
+function chatCheck() {
+    let daRuneTarget = document.querySelector("#da-rune-target").value;
+    let securityOutput = document.getElementById('s_Response');
+
+    if (securityOutput.innerText.indexOf("You must be the king to do that.") > -1) {
+        securityOutput.innerText = "";
+        updateXY();
+    }
+    for (let n = 0; n != 2; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf("runes left.") > -1) {
+                let targetRuneCount = parseInt(s_Chat.childNodes[n].innerHTML.substring(s_Chat.childNodes[n].innerHTML.indexOf("</a> ") + 4, s_Chat.childNodes[n].innerHTML.indexOf(" runes")), 10);
+                if (targetRuneCount <= daRuneTarget) {
+                    s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("left.", "left!");
+                    updateDA();
+                    return;
+                }
+            }
+			    if (document.querySelector('#s_Response').innerText.indexOf("You must be the king to do that.") > -1) {
+               updateDA();
+			   
+        return;
+    }
+            if (s_Chat.childNodes[n].innerHTML.indexOf("This requires two runes.") > -1) {
+                updateDA();
+                return;
+            }
+        } catch (e) {
+
+        }
+    }
+}
+
+function updateDA() {
+    let xLoc = document.querySelector("#x-da-loc");
+    let yLoc = document.querySelector("#y-da-loc");
+    let xInc = document.querySelector("#inc-x-location");
+    let yInc = document.querySelector("#inc-y-location");
+    let noInc = document.querySelector("#inc-no-location");
+    if (!noInc.checked) {
+        if (xInc.checked == true && accountSettings.mobValue[3] == 0) {
+		if ( xLoc.value < accountSettings.peStats[2]) {
+        xLoc.value = zeroPad(parseInt(xLoc.value, 10) + 1);
+        }
+		}
+        if (yInc.checked == true || accountSettings.mobValue[3] == 1) {
+            yLoc.value = zeroPad(parseInt(yLoc.value, 10) + 1);
+        }   
+}
+}
+
+function updateXY() {
+    let xLoc = document.querySelector("#x-action-loc");
+    let yLoc = document.querySelector("#y-action-loc");
+    let xInc = document.querySelector("#inc-x-location");
+    let yInc = document.querySelector("#inc-y-location");
+    let noInc = document.querySelector("#inc-no-location");
+    if (!noInc.checked) {
+        if (xInc.checked == true && accountSettings.mobValue[3] == 0 ) {
+            xLoc.value = zeroPad(parseInt(xLoc.value, 10) + 1);
+        }
+        if (yInc.checked == true || accountSettings.mobValue[3] == 1) {
+            yLoc.value = zeroPad(parseInt(yLoc.value, 10) + 1);
+        }
+		}
+}
+
+function toggleNukeMenu() {
+    if (task !== "nuke") {
+        task = "nuke";
+        document.getElementById("nuke-menu").hidden = false;
+        document.getElementById("da-menu").hidden = false;
+        if (accountSettings.peStats[0] !== "UNSET") {
+            document.querySelector("#x-da-loc").value = accountSettings.peStats[0].substring(0, 3);
+            document.querySelector("#z-da-loc").value = accountSettings.peStats[0].substring(4, 7);
+            document.querySelector("#y-da-loc").value = accountSettings.peStats[0].substring(8, 11);
+        }
+    } else {
+        task = "none";
+        document.getElementById("ash-farm").hidden = true;
+        document.getElementById("kingdom-farm").hidden = true;
+        document.getElementById("kingdom-menu").hidden = true;
+        document.getElementById("nuke-menu").hidden = true;
+        document.getElementById("da-menu").hidden = true;
+		document.getElementById("duel").hidden = true;
+	    document.getElementById("acuman").hidden = true;
+		document.getElementById("rune-menu").hidden = true;
+		document.getElementById("profit-menu").hidden = true;
+    }
+}
+
+function toggleBuildMenu() {
+    if (task !== "build") {
+        task = "build";
+        document.getElementById("kingdom-menu").hidden = false;
+        document.getElementById("da-menu").hidden = false;
+        if (accountSettings.peStats[0] !== "UNSET") {
+            document.querySelector("#x-da-loc").value = accountSettings.peStats[0].substring(0, 3);
+            document.querySelector("#z-da-loc").value = accountSettings.peStats[0].substring(4, 7);
+            document.querySelector("#y-da-loc").value = accountSettings.peStats[0].substring(8, 11);
+        }
+    } else {
+        task = "none";
+        document.getElementById("ash-farm").hidden = true;
+        document.getElementById("kingdom-farm").hidden = true;
+        document.getElementById("kingdom-menu").hidden = true;
+        document.getElementById("nuke-menu").hidden = true;
+        document.getElementById("da-menu").hidden = true;
+		document.getElementById("duel").hidden = true;
+	    document.getElementById("acuman").hidden = true;
+		document.getElementById("rune-menu").hidden = true;
+    }
+}
+
+function returnCurrentUnit() {
+    if (currentUnit == 1) {
+        return "Soldiers";
+    }
+    if (currentUnit == 2) {
+        return "Archers";
+    }
+    if (currentUnit == 3) {
+        return "Catapults";
+    }
+	
+    if (currentUnit == 4) {
+        return "Trebuchets";
+    }
+    if (currentUnit == 0) {
+        return "All";
+    }
+}
+
+function writeSystemMessage(msg) {
+    document.getElementById('system-message').innerText = msg;
+    setTimeout(() => {
+        document.getElementById('system-message').innerText = "";
+    }, 10000);
+}
+function writeSystemMessage1(msg) {
+    document.getElementById('system-message1').innerText = msg;
+}
+function writeSystemMessage2(msg) {
+    document.getElementById('system-message1').innerText = msg;
+}
+
+function updateGoldSource() {
+    let goldSource = document.querySelector("#gold-source").value;
+    let daInfo = document.querySelector("#da-info");
+    if (goldSource == "da") {
+        daInfo.hidden = false;
+    } else {
+        daInfo.hidden = true;
+    }
+}
+
+function Tradegem() {
+ let target = localStorage.globalTradeplayer;
+ let item = localStorage.globalTradeitem;
+doAction(0, 'trade', target, item, '1', true);
+}
+
+
+function giveKingdom() {
+    let target = document.getElementById("give-kingdom-target").value.toLowerCase();
+    let king = document.getElementById("s_King").innerText.toLowerCase();
+	let move1 = document.getElementById("no-go-loc").value;
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+    if (target == "") {
+        console.log("Please enter a king name in the Build Limits settings to give to.");
+        return;
+    }
+    if (isReady() && king == playerName) {
+        doAction(0, 'givek', target, '', '', true);
+		document.getElementById("no-go-loc").value = "1";
+    } else {
+        if (king == "nobody") {
+            doKingdom(0, 'settle', '', '', '', true);
+        } else {
+            move();
+			return;
+    }
+}}
+
+function kingdomBuilder() {
+    chatCheck();
+    switch (document.querySelector("#kd-builder-unit").value) {
+        case "moral":
+            buyMoral();
+            break;
+
+        case "give":
+            giveKingdom();
+            break;
+
+        case "food":
+            buyFood();
+            break;
+
+        case "chance":
+            chanceEeot();
+            break;
+
+        case "tres":
+            buyTres();
+            break;
+
+        case "army":
+            buyArmy();
+            break;
+
+        case "forts":
+            buyForts();
+            break;
+
+        case "runes":
+            buyRunes();
+            break;
+
+        case "all":
+            buildAll();
+            break;
+			
+	    case "banks":
+            bankcraft();
+            break;
+
+        default:
+            break;
+    }
+}
+
+function buildAll() {
+    if (!buyMoral(true)) {
+        return;
+    }
+    if (!buyFood(true)) {
+        return;
+    }
+    if (!buyTres(true)) {
+        return;
+    }
+    if (!buyArmy(true)) {
+        return;
+    }
+    if (!buyForts(true)) {
+        return;
+    }
+    if (!buyRunes(false)) {
+        return;
+    }
+}
+
+function buyRunes(all = false) {
+    let runes = parseInt(document.getElementById("s_Runes").innerText, 10);
+    let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
+    let normalLimit = localStorage.globalRunecount;
+    let forgeLimit = parseInt(document.querySelector("#forge-rune-limit").value, 10);
+		let move1 = document.getElementById("no-go-loc").value;
+	
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+
+    if (checkKing()) {
+        if (document.getElementById("s_Loc").innerText.split(",")[1] !== "For") {
+            if (runes < normalLimit) {
+                let runesNeeded = (normalLimit - runes);
+                if (gold > 0) {
+                    if (runesNeeded > 1 && gold == 2000000000) {
+                        doKingdom(0, 'rune', '', '', 2, true);
+						document.getElementById("no-go-loc").value = "1";
+                        return false;
+                    }
+                    if (runesNeeded >= 1 && (gold >= 1000000000 && gold <= 2000000000)) {
+                        doKingdom(0, 'rune', '', '', 1, true);
+						document.getElementById("no-go-loc").value = "1";
+                        return false;
+                    }
+                    if (runesNeeded > 0 && gold < 1000000000) {
+                        getGold();
+                        return false;
+                    }
+					
+                } else {
+                    getGold();
+                    return false;
+                }
+            } else {
+			if(document.getElementById('general0').elements[5].value == accountSettings.tpLocs[6]) {
+			writeSystemMessage("job type is build");
+			return true;
+			}
+                if (!all) {
+                    move();
+                    writeSystemMessage("Runes at limit. Moving");
+                }
+                return true;
+            }
+        } else {
+            if (runes < forgeLimit) {
+                let runesNeeded = (forgeLimit - runes);
+                if (gold > 0) {
+                    if (runesNeeded > 1 && gold == 2000000000) {
+                        doKingdom(0, 'rune', '', '', 2, true);
+						document.getElementById("no-go-loc").value = "1";
+
+                        return false;
+                    }
+                    if (runesNeeded >= 1 && (gold >= 1000000000 && gold <= 2000000000)) {
+                        doKingdom(0, 'rune', '', '', 1, true);
+						document.getElementById("no-go-loc").value = "1";
+                        return false;
+                    }
+                    if (runesNeeded > 0 && gold < 1000000000) {
+                        getGold();
+                        return false;
+                    }
+                } else {
+                    getGold();
+                    return false;
+                }
+            } else {
+                writeSystemMessage("Kingdom runes at limit. Not doing anything.");
+            }
+        }
+    } else {
+        writeSystemMessage("Kingdom not owned by you.");
+        return true;
+    }
+}
+
+function buyMoral(all = false) {
+    let moral_value = parseFloat(document.getElementById("s_Moral").innerText) * 10000;
+    let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
+		        if (document.getElementById("s_King").innerText.toLowerCase() == "nobody") {
+doKingdom(0, 'settle', '', '', '', true);
+}
+    if (checkKing()) {
+        if (document.getElementById("s_Loc").innerText.split(",")[1] !== "For") {
+            //Regular
+            if (moral_value < 999900) {
+                let moralNeeded = (999900 - moral_value) * 100;
+                if (gold > 0) {
+                    if (gold >= moralNeeded) {
+                        doKingdom(0, 'pay', '', '', moralNeeded, true);
+                        return false;
+                    } else {					
+                        doKingdom(0, 'pay', '', '', gold, true);
+                        return false;
+                    }
+                } else {
+                    getGold();
+                    return false;
+                }
+            } else {
+						if(document.getElementById('general0').elements[5].value == accountSettings.tpLocs[6]) {
+			writeSystemMessage("job type is build");
+			return false;
+			}
+                if (!all) {
+                    move();
+                    writeSystemMessage("Moral is at limit. Moving");
+                }
+                return true;
+            }
+        } else {
+            //Forge
+            if (moral_value < 999900) {
+                let moralNeeded = (999900 - moral_value) * 10000;
+                if (gold > 0) {
+                    if (gold >= moralNeeded) {
+                        doKingdom(0, 'pay', '', '', moralNeeded, true);
+                        return false;
+					}  else {
+                        doKingdom(0, 'pay', '', '', gold, true);
+                        return false;
+                    }
+                } else {
+                    getGold();
+                    return false;
+                }
+            } else {
+                writeSystemMessage("Moral is at limit.");
+                return true;
+            }
+        }
+    } else {
+        writeSystemMessage("Kingdom not owned by you.");
+    }			
+}
+
+function buyFood(all = false) {
+    let food = parseInt(parseInt(document.getElementById("s_Food").innerText.replace(/\,/g, ''), 10), 10);
+    let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
+    let normalLimit = parseInt(document.querySelector("#normal-food-limit").value, 10);
+    let forgeLimit = parseInt(document.querySelector("#forge-food-limit").value, 10);
+
+    if (checkKing()) {
+        if (document.getElementById("s_Loc").innerText.split(",")[1] !== "For") {
+            //Regular
+            if (food < normalLimit) {
+                let foodNeeded = (normalLimit - food);
+                if (gold > 0) {
+                    if (gold >= foodNeeded) {
+                        genChat("/bf");;
+                        return false;
+                    } else {
+                        genChat("/bf");;
+                        return false;
+                    }
+                } else {
+                    getGold();
+                    return false;
+                }
+            } else {
+						if(document.getElementById('general0').elements[5].value == accountSettings.tpLocs[6]) {
+			writeSystemMessage("job type is build");
+			return false;
+			}
+                if (!all) {
+                    writeSystemMessage("Food is already at limit. Moving");
+                    move();
+                    return true;
+                }
+            }
+        } else {
+            //Forge
+            if (food < forgeLimit) {
+                if (gold > 999999) {
+                    doKingdom(0, 'food', '', '', gold, true);
+                    return false;
+                } else {
+                    getGold();
+                    return false;
+                }
+            } else {
+                writeSystemMessage("Food is already at limit.");
+                return true;
+            }
+        }
+    } else {
+        writeSystemMessage("Kingdom not owned by you.");
+        return true;
+    }
+}
+
+function chanceEeot() {
+    let runes = parseInt(document.getElementById("s_Runes").innerText, 10);
+    if (checkKing()) {
+        if (document.getElementById("s_Loc").innerText.split(",")[1] !== "For") {
+            //Regular
+            if (runes <= 989) {
+                genChat("/chance");
+                return;
+            } else {
+                writeSystemMessage("Too many runes in kingdom, refusing to chance.");
+                return;
+            }
+        } else {
+            //Forge
+            writeSystemMessage("Forge kingdoms cannot be chanced.");
+            return;
+        }
+    } else {
+        writeSystemMessage("Kingdom not owned by you.");
+        return;
+    }
+}
+
+function battleLoop() {
+    if (!!document.querySelector("img[name=revive]")) {
+        try {
+            $(revive).trigger("mousedown");
+        } catch (e) {
+            writeSystemMessage(e);
+        }
+        return;
+    }
+    if (manageLevel()) {
+        return;
+    }
+    if (document.querySelector('#s_Response').innerText.indexOf("Enemy not found.") > -1) {
+        doAction(0, 'battle', 0, '', '', true);
+        return;
+    }
+	    if (document.querySelector('#s_Response').innerText.indexOf("You or your enemy has moved...lost target.") > -1) {
+        move();
+        return;
+    }
+		    if (document.querySelector('#s_Response').innerText.indexOf("You have slain The GUARD!") > -1) {
+        move();
+        return;
+    }
+    if (!!document.querySelector("img[name=gattackattack]")) {
+        try {
+            attack();
+        } catch (e) {
+            //Error attacking
+            writeSystemMessage(e);
+        }
+        return;
+    }
+    try {
+        doAction(0, 'battle', 0, '', '', true);
+    } catch (e) {
+        //Error fighting new mobs
+        writeSystemMessage(e);
+    }
+}
+			
+function buyTres(all = false) {
+    let tres = parseInt(parseInt(document.getElementById("s_Tres").innerText.replace(/\,/g, ''), 10), 10);
+    let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
+    let normalLimit = parseInt(document.querySelector("#normal-tres-limit").value, 10);
+    let forgeLimit = parseInt(document.querySelector("#forge-tres-limit").value, 10);
+
+    if (checkKing()) {
+        if (document.getElementById("s_Loc").innerText.split(",")[1] !== "For") {
+            //Regular
+            if (tres < normalLimit) {
+                let tresNeeded = (normalLimit - tres);
+                if (gold > 0) {
+                    if (gold >= tresNeeded) {
+                        doKingdom(0, 'deposit', '', '', tresNeeded, true);
+                        return false;
+                    } else {
+                        doKingdom(0, 'deposit', '', '', gold, true);
+                        return false;
+                    }
+                } else {
+                    getGold();
+                    return false;
+                }
+            } else {
+						if(document.getElementById('general0').elements[5].value == accountSettings.tpLocs[6]) {
+			writeSystemMessage("job type is build");
+			return false;
+			}
+                if (!all) {
+                    writeSystemMessage("Treasury is already at limit. Moving");
+                    move();
+                    return true;
+                }
+            }
+        } else {
+            //Forge
+            if (tres < forgeLimit) {
+                if (gold > 10000000) {
+                    doKingdom(0, 'deposit', '', '', gold, true);
+                    return false;
+                } else {
+                    getGold();
+                    return false;
+                }
+            } else {
+                writeSystemMessage("Treasury is already at limit.");
+                return true;
+            }
+        }
+    } else {
+        writeSystemMessage("Kingdom not owned by you.");
+        return true;
+    }
+}
+
+function armyAvg() {
+    let units = [
+        parseInt(document.getElementById("s_Soldiers").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_Archers").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_Catapults").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_Trebuchets").innerText.replace(/\,/g, ''), 10)
+    ];
+    let avg = 0;
+    units.forEach(value => avg += value);
+    return Math.round(avg / 4);
+}
+
+function buyArmy(all = false) {
+    let bWidth = parseInt(document.querySelector("#BarneyEmpty").width, 10);
+	let subDisp = document.getElementById("s_subbut0").style.display;
+    let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
+    let useRef = document.querySelector("#kd-use-ref").checked;
+    let useRep = document.querySelector("#kd-use-rep").checked;
+    let normalLimit = parseInt(document.querySelector("#normal-army-limit").value, 10);
+    let forgeLimit = parseInt(document.querySelector("#forge-army-limit").value, 10);
+	let forgesolLimit = parseInt(document.querySelector("#forge-sol-limit").value, 10);
+	let forgearchLimit = parseInt(document.querySelector("#forge-arch-limit").value, 10);
+	let forgecatLimit = parseInt(document.querySelector("#forge-cat-limit").value, 10);
+	let forgetrebLimit = parseInt(document.querySelector("#forge-treb-limit").value, 10);
+	let soldier =parseInt(document.getElementById("s_Soldiers").innerText.replace(/\,/g, ''), 10);
+    let archer = parseInt(document.getElementById("s_Archers").innerText.replace(/\,/g, ''), 10);
+    let cat = parseInt(document.getElementById("s_Catapults").innerText.replace(/\,/g, ''), 10);
+    let treb = parseInt(document.getElementById("s_Trebuchets").innerText.replace(/\,/g, ''), 10);
+    let units = [
+        parseInt(document.getElementById("s_Soldiers").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_Archers").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_Catapults").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_Trebuchets").innerText.replace(/\,/g, ''), 10)
+    ];
+
+    if (checkKing()) {
+        if (document.getElementById("s_Loc").innerText.split(",")[1] !== "For") {
+            //Regular
+            if (armyAvg() < normalLimit) {
+                if (useRef) {
+                    if (gold > 0) {
+                        genChat(`/ref`);
+                        return false;
+                    } else {
+                        getGold();
+                        return false;
+                    }
+                }
+                if (useRep) {
+                    if (gold > 0) {
+                        genChat(`/rep`);
+                        return false;
+                    } else {
+                        getGold();
+                        return false;
+                    }
+                }
+                for (let n in units) {
+                    if (units[n] < normalLimit) {
+                        let armyNeeded = normalLimit - units[n];
+                        if (gold > 0) {
+                            if (gold >= armyNeeded) {
+                                doKingdom(0, 'army', n, '', armyNeeded, true);
+                                break;
+                            } else {
+                                doKingdom(0, 'army', n, '', gold, true);
+                                break;
+                            }
+                        } else {
+                            getGold();
+                            break;
+                        }
+                    }
+                }
+            } else {
+						if(document.getElementById('general0').elements[5].value == accountSettings.tpLocs[6]) {
+			writeSystemMessage("job type is build");
+			return false;
+			}
+                if (!all) {
+                    writeSystemMessage("Armies at limit. Moving");
+                    move();
+                    return true;
+                }
+            }
+        } else {
+            //Forge
+							if (soldier < forgesolLimit) {
+                if (gold >= 10000000) {
+                    doKingdom(0, 'army', 0, '', gold, true);
+                    return false;
+                } else {
+                    getGold();
+                    return false;
+                }
+            }
+			if (archer < forgearchLimit) {
+                if (gold >= 10000000) {
+                    doKingdom(0, 'army', 1, '', gold, true);
+                    return false;
+                } else {
+                    getGold();
+                    return false;
+                }
+            }
+		   if (cat < forgecatLimit) {
+                if (gold >= 10000000) {
+                    doKingdom(0, 'army', 2, '', gold, true);
+                    return false;
+                } else {
+                    getGold();
+                    return false;
+                }
+            }
+		  if (treb < forgetrebLimit) {
+                if (gold >= 10000000) {
+                    doKingdom(0, 'army', 3, '', gold, true);
+                    return false;
+                } else {
+                    getGold();
+                    return false;
+                }
+            }
+            if (armyAvg() < forgeLimit) {
+                if (gold >= 10000000) {
+                    doKingdom(0, 'army', 4, '', Math.floor(gold / 4), true);
+                    return false;
+                } else {
+                    getGold();
+                    return false;
+                }
+            } else {
+                writeSystemMessage("Armies at limit.");
+                return true;
+            }
+        }
+    } else {
+        writeSystemMessage("Kingdom not owned by you.");
+        return true;
+    }
+}
+
+function getDirection(unit) {
+    let temp;
+    unit = parseInt(unit, 10);
+    if ([0, 4, 8].includes(unit)) {
+        temp = 0;
+    }
+    if ([1, 5, 9].includes(unit)) {
+        temp = 1;
+    }
+    if ([2, 6, 10].includes(unit)) {
+        temp = 2;
+    }
+    if ([3, 7, 11].includes(unit)) {
+        temp = 3;
+    }
+    return temp;
+}
+
+function getFort(unit) {
+    let temp;
+    unit = parseInt(unit, 10);
+    if (unit >= 0 && unit < 4) {
+        temp = 0;
+    }
+    if (unit >= 4 && unit < 8) {
+        temp = 1;
+    }
+    if (unit >= 8 && unit < 12) {
+        temp = 2;
+    }
+    return temp;
+}
+
+function fortAvg() {
+    let units = [
+        parseInt(document.getElementById("s_WallN").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_WallS").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_WallE").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_WallW").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_MoatN").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_MoatS").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_MoatE").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_MoatW").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_CannonN").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_CannonS").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_CannonE").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_CannonW").innerText.replace(/\,/g, ''), 10)
+    ];
+    let avg = 0;
+    units.forEach(value => avg += value);
+    return Math.round(avg / 12);
+}
+
+
+
+function buyForts(all = false) {
+    let bWidth = parseInt(document.querySelector("#BarneyEmpty").width, 10);
+	let subDisp = document.getElementById("s_subbut0").style.display;
+    let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
+    let useFort = document.querySelector("#kd-use-fort").checked;
+    let normalLimit = parseInt(document.querySelector("#normal-fort-limit").value, 10);
+    let forgeLimit = parseInt(document.querySelector("#forge-fort-limit").value, 10);
+    let units = [
+        parseInt(document.getElementById("s_WallN").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_WallS").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_WallE").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_WallW").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_MoatN").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_MoatS").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_MoatE").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_MoatW").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_CannonN").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_CannonS").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_CannonE").innerText.replace(/\,/g, ''), 10),
+        parseInt(document.getElementById("s_CannonW").innerText.replace(/\,/g, ''), 10)
+    ];
+	let move1 = document.getElementById("no-go-loc").value;
+	
+if (move1 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+    if (checkKing()) {
+        if (document.getElementById("s_Loc").innerText.split(",")[1] !== "For") {
+            //Regular
+            if (fortAvg() < normalLimit) {
+                if (useFort) {
+                    if (gold > 0) {
+                        genChat(`/fort`);
+						document.getElementById("no-go-loc").value = "1";
+                        return false;
+                    } else {
+                        getGold();
+                        return false;
+                    }
+                }
+                for (let n in units) {
+                    if (units[n] < normalLimit) {
+                        let fortsNeeded = normalLimit - units[n];
+                        if (gold > 0) {
+                            if (gold >= fortsNeeded) {
+                                let direction = getDirection(n);
+                                let unit = getFort(n);
+                                break;
+                            } else {
+                                let direction = getDirection(n);
+                                let unit = getFort(n);
+                                doKingdom(0, 'fortify', unit, direction, gold, true);
+                                break;
+                            }
+                        } else {
+                            getGold();
+                            break;
+                        }
+                    }
+                }
+            } else {
+						if(document.getElementById('general0').elements[5].value == accountSettings.tpLocs[6]) {
+			writeSystemMessage("job type is build");
+			return false;
+			}
+                if (!all) {
+                    writeSystemMessage("Forts at limit. Moving.");
+                    move();
+                    return true;
+                }
+            }
+        } else {
+            //Forge
+            if (fortAvg() < forgeLimit) {
+                if (gold >= 12000000) {
+                    doKingdom(0, 'fortify', 3, '', Math.floor(gold / 12), true);
+					document.getElementById("no-go-loc").value = "1";
+                    return false;
+                } else {
+                    getGold();
+                    return false;
+                }
+            } else {
+                writeSystemMessage("Forts at limit.");
+                return true;
+            }
+        }
+    } else {
+        writeSystemMessage("Kingdom not owned by you.");
+        return true;
+    }
+}
+
+function bankcraft(){
+let runes = document.getElementById("s_Runes").innerText.toLowerCase();
+if (runes == 999) {
+doAction(0, 'ts', 27, 30, '', true);
+} else {
+move(); }}
+
+
+function craft(item) {
+    switch (item) {
+        case "eeot":
+            doAction(0, 'ts', 27, 18, '', true);
+            break;
+
+        case "eeogt":
+            doAction(0, 'ts', 27, 19, '', true);
+            break;
+
+        case "eeost":
+            doAction(0, 'ts', 27, 30, '', true);
+            break;
+    }
+    //setJobType();
+}
+function beastHunter(){
+let move = document.querySelector("#s_Response").innerText;
+let move1 = document.getElementById("beast-track").value;
+let nohit = document.getElementById(`general1`).elements[5].value;
+if (isReadyTwo()){
+if (document.getElementById(`general1`).elements[5].innerText.indexOf ("A POLYMORPHIC BEETLE") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("LORD ALCHEMAR") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("AN ECLYPTIC HELL ANGEL") > -1|document.getElementById(`general1`).elements[5].innerText.indexOf ("A CRUCIFIED CORPSE") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("NIGHTMARE FLY") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("A DARKEST WIDOW") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("AN UNBORN TORMENT") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("DRAGONLING ZOMBIE") > -1){  
+        return;
+    }
+	
+  for (let n = 0; n < 3; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf("You cannot touch him.") > -1) {
+             return;
+            }
+        } catch (e) {
+
+        }
+    }
+		    if (document.querySelector('#s_Response').innerText.indexOf("Enemy not found.") > -1) {
+               doAction(0, 'fight', accountSettings.mobValue[0], '', '', true);
+			   return;
+			   }
+       
+    if (!!document.querySelector("img[name=gattackattack]")) {
+            attack();
+        return;
+    }
+				if (document.getElementById(`general1`).elements[5].value < ('99999')){
+	               doAction(1, 'battle', 0, '', '', true)   
+        return;
+    }
+	if (move1 == ('move1')){
+   doAction(0, 'move', 2, '', '', true);
+   document.getElementById("beast-track").value = "move2";
+           return;
+   }
+   	if (move1 == ('move2')){
+   doAction(0, 'move', 0, '', '', true);
+    document.getElementById("beast-track").value = "move3";
+           return;
+   }
+   	if (move1 == ('move3')){
+   doAction(0, 'move', 3, '', '', true);
+        document.getElementById("beast-track").value = "move4";
+           return;
+   }
+   	if (move1 == ('move4')){
+   doAction(0, 'move', 3, '', '', true);
+        document.getElementById("beast-track").value = "move5";
+           return;
+   }
+   	if (move1 == ('move5')){
+   doAction(0, 'move', 1, '', '', true);
+        document.getElementById("beast-track").value = "move6";
+           return;
+   }
+   	if (move1 == ('move6')){
+   doAction(0, 'move', 1, '', '', true);
+       document.getElementById("beast-track").value = "move7";
+   
+           return;
+   }
+   	if (move1 == ('move7')){
+   doAction(0, 'move', 2, '', '', true);
+       document.getElementById("beast-track").value = "move8";
+           return;
+   }
+   	if (move1 == ('move8')){
+   doAction(0, 'move', 2, '', '', true);
+       document.getElementById("beast-track").value = "no beast";
+   document.querySelector("#s_Response").innerText = "No beast found";
+           return;
+   }
+      	if (move == ('No beast found')){
+           return;
+   }
+   else{
+       document.getElementById("beast-track").value = "move1";
+   genChat(`/bb`);
+   return;
+   }
+   }}
+   
+   function autobeastHunter(){
+let move = document.querySelector("#s_Response").innerText;
+let move1 = document.getElementById("beast-track").value;
+let nohit = document.getElementById(`general1`).elements[5].value;
+let move2 = document.getElementById("no-go-loc").value;
+if (move2 == "1"){
+document.getElementById("no-go-loc").value = "2";
+return;
+}
+if (["jc penney"].includes(playerName)){
+return;
+}
+if (isReadyTwo()){
+if (document.getElementById(`general1`).elements[5].innerText.indexOf ("A POLYMORPHIC BEETLE") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("LORD ALCHEMAR") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("AN ECLYPTIC HELL ANGEL") > -1|document.getElementById(`general1`).elements[5].innerText.indexOf ("A CRUCIFIED CORPSE") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("NIGHTMARE FLY") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("A DARKEST WIDOW") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("AN UNBORN TORMENT") > -1||document.getElementById(`general1`).elements[5].innerText.indexOf ("DRAGONLING ZOMBIE") > -1){  
+        document.getElementById("beast-track").value = "UNWANTED";
+		return;
+    }
+	
+  for (let n = 0; n < 3; n++) {
+        try {
+            if (s_Chat.childNodes[n].innerHTML.indexOf("You cannot touch him.") > -1) {
+			document.getElementById("beast-track").value = "UNWANTED";
+			document.getElementById("beast-track").value = "no touch";
+			stop();
+             return;
+            }
+        } catch (e) {
+
+        }
+    }
+		    if (document.querySelector('#s_Response').innerText.indexOf("Enemy not found.") > -1) {
+               doAction(0, 'fight', accountSettings.mobValue[0], '', '', true);
+			   document.getElementById("no-go-loc").value = "1";
+			   return;
+			   }
+			   	    if (!!document.querySelector("img[name=gattackattack]")) {
+document.getElementById("beast-track").value = "reset";					
+            attack();
+document.getElementById("no-go-loc").value = "1";
+        return;
+    }
+       
+    if (!!document.querySelector("img[name=gattackattack]")) {
+            attack();
+			document.getElementById("no-go-loc").value = "3";
+        return;
+    }
+				if (document.getElementById(`general1`).elements[5].value < ('99999')){
+	               doAction(1, 'battle', 0, '', '', true)   
+				   document.getElementById("no-go-loc").value = "1";				  
+        return;
+    }
+	if (move1 == ('move1')){
+   doAction(0, 'move', 2, '', '', true);
+   document.getElementById("no-go-loc").value = "1";
+   document.getElementById("beast-track").value = "move2";
+           return;
+   }
+   	if (move1 == ('move2')){
+   doAction(0, 'move', 0, '', '', true);
+   document.getElementById("no-go-loc").value = "1";
+    document.getElementById("beast-track").value = "move3";
+           return;
+   }
+   	if (move1 == ('move3')){
+   doAction(0, 'move', 3, '', '', true);
+   document.getElementById("no-go-loc").value = "1";
+    document.getElementById("beast-track").value = "move4";
+           return;
+   }
+   	if (move1 == ('move4')){
+   doAction(0, 'move', 3, '', '', true);
+   document.getElementById("no-go-loc").value = "1";
+    document.getElementById("beast-track").value = "move5";
+           return;
+   }
+   	if (move1 == ('move5')){
+   doAction(0, 'move', 1, '', '', true);
+   document.getElementById("no-go-loc").value = "1";
+    document.getElementById("beast-track").value = "move6";
+           return;
+   }
+   	if (move1 == ('move6')){
+   doAction(0, 'move', 1, '', '', true);
+   document.getElementById("no-go-loc").value = "1";
+   document.getElementById("beast-track").value = "move7";
+   
+           return;
+   }
+   	if (move1 == ('move7')){
+   doAction(0, 'move', 2, '', '', true);
+   document.getElementById("no-go-loc").value = "1";
+   document.getElementById("beast-track").value = "move8";
+           return;
+   }
+   	if (move1 == ('move8')){
+   doAction(0, 'move', 2, '', '', true);
+   document.getElementById("no-go-loc").value = "1";
+   document.getElementById("beast-track").value = "no beast found";
+   document.querySelector("#s_Response").innerText = "No beast found";
+           return;
+   }
+      	if (move == ('No beast found')){
+           return;
+   }
+   else{ 
+   genChat(`/bb`);
+   document.getElementById("beast-track").value = "move1";
+   document.getElementById("no-go-loc").value = "1";
+   return;  
+   }
+   }}
+   function profitfinder(){
+let runes = document.getElementById("s_Runes").innerText.toLowerCase();
+let tres = parseInt(document.getElementById("s_Tres").innerText.replace(/\,/g, ""), 10);
+let forgeMintres = parseInt(document.querySelector("#forge-tres-profit").value, 10);
+let forgerunemax = parseInt(document.querySelector("#forge-rune-max").value, 10);
+let armies = parseInt(document.getElementById("s_Soldiers").innerText.replace(/\,/g, ""), 10)+parseInt(document.getElementById("s_Archers").innerText.replace(/\,/g, ""), 10)+parseInt(document.getElementById("s_Catapults").innerText.replace(/\,/g, ""), 10)+parseInt(document.getElementById("s_Trebuchets").innerText.replace(/\,/g, ""), 10);
+let armyneed = armies * 100;
+let armycost = armyneed * 1500000
+let profit = (tres * 1000000)-armycost
+
+	if (runes <=forgerunemax && tres >= forgeMintres && (nobodyCheck)) {
+		console.log ("king:", document.getElementById("s_King").innerText, "locs:", document.getElementById("s_Loc").innerText, "Runes:", document.getElementById("s_Runes").innerText, "tres:", document.getElementById("s_Tres").innerText, "armies:",
+		armies,"army needed:",armyneed,"Profit:",profit);			
+			move();
+			return;
+				}
+
+if (document.getElementById("s_King").innerText.toLowerCase() == "nobody"){
+	move();
+	return;
+		}
+	if (runes <=forgerunemax && tres >= forgeMintres) {
+		console.log ("king:", document.getElementById("s_King").innerText, "locs:", document.getElementById("s_Loc").innerText, "Runes:", document.getElementById("s_Runes").innerText, "tres:", document.getElementById("s_Tres").innerText, "armies:",
+		armies,"army needed:",armyneed,"Profit:",profit);		
+			move();
+			return;
+				}
+			}
+// INTERFACE
+(function loadBot() {
+    let html = `
+                    <td style="bgcolor='#808080'"> <center>
+        <td width="100%" colspan="2" id='extra-menu'>
+            <table border="0" width="100%" cellspacing="0" cellpadding="0" bgcolor="transparent">
+                <tbody>
+                <tr>
+                    <td style="bgcolor='#808080'"> <center>
+					Teleport: X:<input type="text" style="width:35px" value="" id="x-tp-loc">
+					Y:<input type="text" style="width:35px" value="" id="y-tp-loc">
+                    <button id="craft-eeot" onclick="craft('eeot')">EEOT</button> 
+                    <button id="craft-eeogt" onclick="craft('eeogt')">EEOGT</button>
+                    <button id="craft-eeost" onclick="craft('eeost')">EEOST</button>
+					<button onclick="toggleProfitMenu()">Profit</button>
+                    <button onclick="openExternalMenu()">Settings</button>
+                    <button onclick="toggleGlobalSync();">Global Sync</button> 
+                    <select id='tp-loc-select' onchange="specialTp();">
+                        <option value='none' selected>TP To</option>
+                        <option value='plex'>Plex Corner</option>
+                        <option value='forge'>Forge Entrance</option>
+                        <option value='shrine'>Skill Shrine</option>
+                        <option value='id'>Insane Dungeon</option>
+                        <option value='ac'>Ash Collector</option>
+                        <option value='keep'>Keeps</option>
+                        <option value='duel'>Inquest Duel</option>
+                    </select>
+					<input type="text" style="width:35px" value="" id="no-go-loc">
+                    <br>
+
+                    <button onclick="toggleTradeScan()">Trade Watcher</button>
+					<button onclick="toggleNukeScan()">Nuke Watcher</button>
+                    <button onclick="toggleLevel()">Leveling</button>
+                    <button onclick="toggleBezz()">Bezzing</button>
+                    <button onclick="toggleNukeMenu()">Nuke</button>
+                    <button onclick="toggleBuildMenu()">Builder</button>
+					<button onclick="toggleDuel()">Duel</button>
+					<button onclick="toggleAcuman()">Acuman</button>
+					<button onclick="toggleRuneMenu()">Runes</button>
+                    <br>
+
+                    <div id="ash-farm" hidden>
+                        <button onclick="toggleApexManagement()">Apex Management</button> <br>
+                        <button onclick="toggleLevelHotkey()">Toggle Hotkeys On/Off</button> <br>
+                        Level Hotkey Active: <span id="hk-active1">false</span> (x) | Ash Hotkey Active: <span id="hk-active2">false</span> (q) <br>
+                        <label>Auto Ash Items:<input type='checkbox' id='auto-ash-check' checked></label>Ash Earned: <span id="ash-earned">0</span>
+						<label>Auto beast:<input type='checkbox' id='auto-beast-check' unchecked></label>
+						<label>Auto craft:<input type='checkbox' id='auto-craft-check' unchecked></label>
+						<label>Auto enchant:<input type='checkbox' id='auto-enchant-check' unchecked></label>
+						<label>Auto farm:<input type='checkbox' id='auto-farm-check' checked></label>
+						<label>apex unequiped:<input type='checkbox' id='apex-farm-check' checked></label>
+						<input type="text" style="width:35px" value="" id="beast-track">
+                    </div>
+					
+                    <div id="duel" hidden>
+                       <button onclick="toggleDuelHotkey()">Toggle Hotkeys On/Off</button> <br>
+					   Duel Hotkey Active: <span id="hk-active4">false</span>		
+                    </div>
+					
+					                    <div id="acuman" hidden>
+                       <button onclick="toggleacumanHotkey()">Toggle Hotkeys On/Off</button> <br>
+					   Acuman Hotkey Active: <span id="hk-active5">false</span>		
+                    </div>
+
+                    <div id="kingdom-farm" hidden>
+                        <button onclick="toggleBezzHotkey()">Toggle Hotkey On/Off</button> <br>
+                        Bezz Hotkey Active: <span id="hk-active3">false</span> (x)
+						<label>Increment:<label>X <input type='checkbox' id="inc-x-location" checked></label> 
+                        <label>Y <input type='checkbox' id="inc-y-location"></label><label>Disabled<input type='checkbox' id="inc-no-location"></label></label>
+                    </div>
+
+                    <div id="nuke-menu" hidden>
+                        <label>Ignore Quantity<input type='checkbox' onclick="toggleIgnoreQty()"></label> |  
+                        <label>Ignore Trebuchets<input type='checkbox' onclick="toggleIgnoreTreb()"></label>					
+                        <span>Current Unit: </span> <span id="current-unit-span">${returnCurrentUnit()}</span> <br>
+                        <span>w = north, a = west, s = south, d = east, q/e cycle units. Arrows move Please disable RWK hotkeys.</span> <br>
+                        <span>Hotkeys Enabled: </span> <span id="hot-key-status"> false </span> <button onclick="nukeKeyToggler();">Toggle</button>
+                        <button onclick="chanceEeot();">Chance</button> <button onclick="nrage();">Enrage</button>
+                    </div>
+
+                    <div id='kingdom-menu' hidden>
+                        Kingdom Builder Hotkey Active (x) <br>
+                        <label>Target Unit: 
+                        <select id="kd-builder-unit">
+                            <option value='moral'>Moral</option>
+                            <option value='food'>Food</option> 
+                            <option value='tres'>Tres</option> 
+                            <option value='army'>Army</option> 
+                            <option value='forts'>Forts</option> 
+                            <option value='runes'>Runes</option>
+                            <option value='give'>Give Away</option>
+                            <option value='all'>All (WIP)</option>
+                            <option value='chance'>Chance</option>
+                            <option value='kill'>kguard</option>
+                            <option value='bribe'>Bribe</option>
+							<option value='banks'>Banks</option>
+                        </select></label>
+                        <label>Check King <input type='checkbox' id='kd-check-king' checked></label>
+                        <br>
+                        <label>Use /ref <input type='checkbox' id='kd-use-ref' unchecked></label>
+                        <label>Use /rep <input type='checkbox' id='kd-use-rep' checked></label>
+                        <label>Use /fort <input type='checkbox' id='kd-use-fort' checked></label><br>
+                        Build Limits 
+                        <span>Give Kingdom Target: <input type="text" id="give-kingdom-target" placeholder="Enter Name"></span><br>
+                        <span>Normal: Food: <input type=text value="2000000000" style="width:80px" id="normal-food-limit"> Tres: <input type=text value="2000000000" style="width:80px" id="normal-tres-limit"> Runes: <input type=text value= "${localStorage.globalRunecount}"  style="width:35px" id="normal-rune-limit"> Army: <input type=text value="2000000000" style="width:80px" id="normal-army-limit">  Fort: <input type=text value="2000000000" style="width:80px" id="normal-fort-limit"></span> <br>
+                        <span>Forge: Food: <input type=text value="50000" style="width:70px" id="forge-food-limit"> Tres: <input type=text value="1000000" style="width:70px" id="forge-tres-limit"> Runes: <input type=text value="999" style="width:35px" id="forge-rune-limit">Sol: <input type=text value="${localStorage.globalForgesol}" style="width:70px" id="forge-sol-limit"> arch: <input type=text value="${localStorage.globalForgearch}" style="width:70px" id="forge-arch-limit"> cat: <input type=text value="${localStorage.globalForgecat}" style="width:70px" id="forge-cat-limit"> treb: <input type=text value="${localStorage.globalForgetreb}" style="width:70px" id="forge-treb-limit"> Army: <input type=text value="${localStorage.globalForgeall}" style="width:70px" id="forge-army-limit">  Fort: <input type=text value="100000" style="width:70px" id="forge-fort-limit"></span>
+                    </div>
+
+                    <div id='rune-menu' hidden>
+                       <button onclick="toggleruneHotkey()">Toggle Hotkey On/Off</button> <br>
+                        rune Hotkey Active: <span id="hk-active6">false</span> (x)
+                        Target: <input type="text" style="width:35px" value="000" id="x-action-loc">,
+                        <select id="z-action-loc">
+                            <option value="hev">Hev</option> 
+                            <option value="sky">Sky</option> 
+                            <option value="sur" selected>Sur</option> 
+                            <option value="dun">Dun</option> 
+                            <option value="hel">Hel</option> 
+                            <option value="for">For</option> 
+                        </select>,
+                        <input type="text" style="width:35px" value="000" id="y-action-loc">
+                        BR Rune Limit: <input type="text" style="width:35px" value="25" id="br-limit">
+                        Tres: <input type=text value="4000000" style="width:80px" id="forge-tres-min">						
+                        <br>
+                        <label>Increment:<label>X <input type='checkbox' id="inc-x-location" checked></label> 
+                        <label>Y <input type='checkbox' id="inc-y-location"></label><label>Disabled<input type='checkbox' id="inc-no-location"></label></label>
+                    </div>
+					
+                    <div id='profit-menu' hidden>
+                       <button onclick="toggleprofitHotkey()">Toggle Hotkey On/Off</button> <br>
+                        profit Hotkey Active: <span id="hk-active7">false</span> (x) <br>
+						<label>Log Nobody: <input type='checkbox' id='kd-check-nobody' checked></label>
+                        Tres Min: <input type=text value="4000000" style="width:80px" id="forge-tres-profit">
+						Rune count Max: <input type=text value="100" style="width:80px" id="forge-rune-max">	
+                    </div>
+                    <div id="da-menu" hidden>
+                        Gold Source: <select id="gold-source" onchange="updateGoldSource();"><option value="da">Da</option><option value="bezz" selected>Embezzle</option></select> 
+                        <div id="da-info" hidden>Loc: <input type="text" style="width:35px" value="000" id="x-da-loc">,
+                            <select id="z-da-loc">
+                                <option value="hev">Hev</option> 
+                                <option value="sky">Sky</option> 
+                                <option value="sur" selected>Sur</option> 
+                                <option value="dun">Dun</option> 
+                                <option value="hel">Hel</option> 
+                                <option value="for">For</option> 
+                            </select>,
+                            <input type="text" style="width:35px" value="000" id="y-da-loc">
+                            Min Runes: <input type="text" style="width:35px" value="25" id="da-rune-target">
+                        </div>
+                    </div>
+
+                    <div>
+                        <span id="system-message"> </span>
+						<span id="system-message1"> </span>
+						
+                    </div>
+                    </center>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </td>`;
+    document.querySelectorAll("table")[10].insertAdjacentHTML("afterend", html);
+    setJobType();
+
+    document.querySelector("#inc-x-location").addEventListener("click", () => {
+        document.querySelector("#inc-y-location").checked = false;
+        document.querySelector("#inc-no-location").checked = false;
+    });
+
+    document.querySelector("#inc-y-location").addEventListener("click", () => {
+        document.querySelector("#inc-x-location").checked = false;
+        document.querySelector("#inc-no-location").checked = false;
+    });
+
+    document.querySelector("#inc-no-location").addEventListener("click", () => {
+        document.querySelector("#inc-x-location").checked = false;
+        document.querySelector("#inc-y-location").checked = false;
+    });
+
+    document.querySelector("#kd-use-ref").addEventListener("click", () => {
+        document.querySelector("#kd-use-rep").checked = false;
+    });
+
+    document.querySelector("#kd-use-rep").addEventListener("click", () => {
+        document.querySelector("#kd-use-ref").checked = false;
+    });
+
+    document.querySelector("#kd-check-king").addEventListener("click", () => {
+        if (kingCheck) {
+            kingCheck = false;
+        } else {
+            kingCheck = true;
+        }
+        writeSystemMessage(`King Checking: ${kingCheck}`);
+    });
+	    document.querySelector("#kd-check-nobody").addEventListener("click", () => {
+        if (nobodyCheck) {
+            nobodyCheck = false;
+        } else {
+            nobodyCheck = true;
+        }
+        writeSystemMessage(`Nobody Checking: ${nobodyCheck}`);
+    });
+
+    document.querySelector("#auto-ash-check").addEventListener("click", () => {
+        if (checkAsh) {
+            checkAsh = false;
+        } else {
+            checkAsh = true;
+        }
+    });
+    startAsh = getCurrentAsh();
+    loadPlayerStats();
+})();
+
+document.querySelector("#y-tp-loc")
+    .addEventListener("keyup", function(event) {
+    if (isReadyThree() && event.keyCode === 13) {
+        Tp();
+		event.preventDefault();
+    }
+});
+
+//hotkeys
+addEventListener('keydown', function(event){
+    if (isReadyThree() && event.keyCode === 124) {
+        if (securityCheck()) {
+            if (task == "ash") {
+                fightCheck();
+            }
+				            if (task == "build") {
+                kingdomBuilder();
+            }
+			if (task == "duel") {
+                duelLoop();
+            }
+						if (task == "acuman") {
+                duelLoop1();
+            }
+            if (task == "kingdom") {
+                kingdomBezz();
+            }
+			if (task == "rune") {
+                moveRunes();
+            }
+						if (task == "profit") {
+                profitfinder();
+            }
+        }
+
+        if (task != "none") {
+            event.preventDefault();
+        }
+    }
+    if (nukeKeysEnabled) {
+        if (event.keyCode == 38) {
+            if (isReadyThree() && securityCheck()) {
+                doAction(0, "move", 0, '', '', true);
+            }
+            event.preventDefault();
+            return;
+        }
+        if (event.keyCode == 37) {
+            if (securityCheck()) {
+                doAction(0, "move", 3, '', '', true);
+            }
+            event.preventDefault();
+            return;
+        }
+        if (event.keyCode == 40) {
+            if (isReadyThree() && securityCheck()) {
+                doAction(0, "move", 1, '', '', true);
+            }
+            event.preventDefault();
+            return;
+        }
+        if (event.keyCode == 39) {
+            if (isReadyThree() && securityCheck()) {
+                doAction(0, "move", 2, '', '', true);
+            }
+            event.preventDefault();
+            return;
+        }
+        if (isReadyThree() && securityCheck()) {
+            if (event.keyCode == 87) {
+                build_attack(currentUnit, 0);
+                event.preventDefault();
+                return;
+            }
+            if (event.keyCode == 65) {
+                build_attack(currentUnit, 3);
+                event.preventDefault();
+                return;
+            }
+            if (event.keyCode == 83) {
+                build_attack(currentUnit, 1);
+                event.preventDefault();
+                return;
+            }
+            if (event.keyCode == 68) {
+                build_attack(currentUnit, 2);
+                event.preventDefault();
+                return;
+            }
+            if (event.keyCode == 81) {
+                currentUnit++;
+                if (currentUnit > 4) {
+                    currentUnit = 0;
+                }
+                document.querySelector("#current-unit-span").innerText = `${returnCurrentUnit()}`;
+                event.preventDefault();
+                return;
+            }
+            if (event.keyCode == 69) {
+                currentUnit--;
+                if (currentUnit < 0) {
+                    currentUnit = 4;
+                }
+                document.querySelector("#current-unit-span").innerText = `${returnCurrentUnit()}`;
+                event.preventDefault();
+                return;
+            }
+        }
+    }
+    if (event.keyCode === 27) {
+        if (jobType == "ash") {
+            jobType = "bezzgf";
+            setJobType();
+            event.preventDefault();
+            return;
+        } else if (jobType == "bezzgf") {
+            jobType = "kdrun";
+            setJobType();
+            event.preventDefault();
+            return;
+        } else if (jobType == "kdrun") {
+            jobType = "inquest";
+            setJobType();
+            event.preventDefault();
+            return;
+        } else if (jobType == "inquest") {
+            jobType = "build";
+            setJobType();
+            event.preventDefault();
+            return;
+        } else if (jobType == "build") {
+            jobType = "ash";
+            setJobType();
+            event.preventDefault();
+            return;
+        } else if (jobType == "none") {
+            jobType = "ash";
+            setJobType();
+            event.preventDefault();
+            return;
+        }
+    }
+    if (event.keyCode == 125) {
+        if (isReadyThree() && securityCheck()) {
+            if (task == "ash") {
+                burnItems(true);
+            }
+        }
+        if (task != "none") {
+            event.preventDefault();
+        }
+    }
+    if (event.keyCode === 220) {
+        toggleBarVisibility();
+        event.preventDefault();
+    }
+    if (event.keyCode === 118) {
+        toggleGlobalSync();
+        event.preventDefault();
+    }
+    if (event.keyCode === 117) {
+        toggleLevelHotkey();
+        event.preventDefault();
+    }
+    if (event.keyCode === 111) {
+        daForgeLocsOne();
+        event.preventDefault();
+    }
+    if (event.keyCode === 113) {
+        toggleBezzHotkey();
+        event.preventDefault();
+    }
+	    if (event.which == 45) {
+        toggleBuildMenu();
+        event.preventDefault();
+    }
+	
+	if (event.which == 109) {
+	skillmin();
+	event.preventDefault();
+	}
+	
+	if (event.which == 107) {
+	skillmax();
+	event.preventDefault();
+	}
+	
+		if (event.which == 46) {
+	Poker();
+	event.preventDefault();
+	}
+		if (event.which == 19) {
+	rPoker();
+	event.preventDefault();
+	}
+		if (event.which == 36) {
+	Shh();
+	resetForgeRun();
+	event.preventDefault();
+	}
+	
+		if (event.which == 33) {
+	Kdmenu();
+	event.preventDefault();
+	}
+	
+		if (event.which == 34) {
+	Goldmenu();
+	event.preventDefault();
+	}
+			if (event.which == 35) {
+	Sforge();
+	event.preventDefault();
+	}
+	
+		if (isReady() && securityCheck()) {
+			if (event.which == 190) {
+	Tradegem();
+	event.preventDefault();
+	}
+	}
+		if (isReady() && securityCheck()) {
+			if (event.which == 144) {
+	toggleApexManagement();
+	event.preventDefault();
+	}
+	}
+			if (isReady() && securityCheck()) {
+			if (event.which == 188) {
+	nrage();
+	event.preventDefault();
+	}
+	}
+						if (isReadyThree() && securityCheck()) {
+			if (event.which == 115) {
+	beastHunter();
+	event.preventDefault();
+	}
+	}
+
+	    if (event.keyCode === 121) {
+		document.querySelector("#s_Response").innerText = "Go Go Gadget Dick."
+		mathTest();
+        toggleRunState();
+        event.preventDefault();
+    }
+});
+
+
+//Private
+let running = false;
+let action, pauseTimer;
+let pauseCounter = 0;
+let paused = false;
+let confirmStop = false;
+let pauseList = [];
+
+function pauseCheck() {
+    let num = randomValue(1, 10);
+    if (pauseList.includes(num)) {
+        takeBreak();
+    } else {
+        pauseList.push(num);
+    }
+}
+
+function takeBreak() {
+    pauseList = [];
+    paused = true;
+
+    let delayer;
+    let chance = randomValue(1, 100);
+    if (chance > 0 && chance < 51) {
+        let maxDelay = randomValue(5000, 60000);
+        delayer = Math.floor(Math.random() * (10000 + maxDelay) + 1000);
+    } else if (chance > 50 && chance < 81) {
+        let maxDelay = randomValue(10000, 120000);
+        delayer = Math.floor(Math.random() * (10000 + maxDelay) + 1000);
+    } else {
+        let maxDelay = randomValue(30000, 300000);
+        delayer = Math.floor(Math.random() * (10000 + maxDelay) + 1000);
+    }
+    pauseTimer = setTimeout(() => {
+        paused = false;
+        loop();
+    }, delayer);
+    return true;
+}
+
+function unPause() {
+    if (paused) {
+        pauseTimer = clearTimeout(pauseTimer);
+        paused = false;
+        confirmStop = false;
+        loop();
+    }
+}
+
+function loop() {
+    let useRep = document.querySelector("#kd-use-rep").checked;
+    let goldSource = document.querySelector("#gold-source").value;
+	let armyCheck = document.querySelector("#kd-builder-unit").value
+    let delay;
+	    if (running && !paused && document.querySelector("#s_Response").innerText.indexOf("Bot check. Count the objects seen.") > -1) {
+		delay = Math.floor(Math.random() * (randomValue(170, 180) - randomValue(50, 80) + 1) + randomValue(5000, 5000));
+		action = setTimeout(doAct, delay);
+		return;
+		}
+		    if (running && !paused && securityCheck() && task == "rune" && goldSource == "da") {
+        delay = Math.floor(Math.random() * (randomValue(10, 20) +1));
+        action = setTimeout(doAct, delay);
+		return;
+    }
+			    if (running && !paused && securityCheck() && task == "build" && goldSource == "da" && useRep && armyCheck == "army") {
+        delay = Math.floor(Math.random() * (randomValue(110, 150) - randomValue(50, 80) + 1) + randomValue(75, 100));
+        action = setTimeout(doAct, delay);
+		return;
+    }
+				    if (running && !paused && securityCheck() && task == "build" && goldSource == "da" && useRep && armyCheck == "forts") {
+        delay = Math.floor(Math.random() * (randomValue(110, 150) - randomValue(50, 80) + 1) + randomValue(100, 100));
+        action = setTimeout(doAct, delay);
+		return;
+    }
+
+    if (running && !paused && securityCheck()) {
+        delay = Math.floor(Math.random() * (randomValue(110, 150) - randomValue(50, 80) + 1) + randomValue(50, 100));
+        action = setTimeout(doAct, delay);
+		return;
+    }
+    }
+
+function doAct() {
+let craft = document.querySelector("#auto-craft-check").checked;
+let enchant = document.querySelector("#auto-enchant-check").checked;
+let farm = document.querySelector("#auto-farm-check").checked;
+    if (running && !paused) {
+        if (securityCheck() || document.querySelector("#s_Response").innerText == "You have not waited the necessary amount of time before doing another action. Now you must wait an additional 10 seconds.") {
+		            if (localStorage.globalmasSec == "1") {
+					stop();
+                return;
+            }
+            if (task == "none") {
+                stop();
+                return;
+            }
+
+            if (task == "ash") {
+			if (craft) {
+                craftCheck();
+            }
+			if (enchant) {
+                enchantlvl();
+            }
+			if(farm){
+                fightCheck();
+				}
+            }
+            if (task == "kingdom") {
+                kingdomBezz();
+            }
+            if (task == "build") {
+                kingdomBuilder();
+            }
+            if (task == "rune" && isReady()) {
+			moveRunes();
+            }
+						if (task == "profit") {
+                profitfinder();
+            }
+									if (task == "acuman") {
+                autoduelLoop1();
+            }
+												if (task == "duel") {
+                autoduelLoop();
+            }
+        } else {
+		stop();
+            return;
+        }
+    }
+    loop();
+}
+
+function toggleRunState() {
+    if (!paused) {
+        if (running) {
+            running = false;
+            action = clearTimeout(doAct);
+        } else {
+            running = true;
+            loop();
+        }
+    } else {
+        if (confirmStop == false) {
+            confirmStop = true;
+        } else {
+            return;
+        }
+    }
+}
+
+function stop() {
+    running = false;
+    pause = false;
+    action = clearTimeout(doAct);
+}
+
+
+
+// \= toggle barny bar on/off
+// f7=toggle global sync on/off
+// f6=toggle ash hotkey on/off
+// f2=toggle bezz hotkey on/off
+// insert=toggle build menu
+// num pad - = skill set to 0
+// num pad + = skill set to 99
+// delete= open poker
+// pause break = raise poker
+// home= /shh
+// page up = cycle kd build menu
+// page down = cycle gold source da/bezzle
+// end= settle forge kd
+// comma = nrage
+// f11 = beast hunter
+// f10= loop for what x is set to do "auto use with caution"
+// / numpad= da forge locs for walk
