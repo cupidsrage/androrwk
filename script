@@ -191,8 +191,31 @@ async function solveCaptchaWithCodex(captchaDataUrl, apiKey) {
         })
     });
 
-    if (response.response && response.response.output_text) {
-        return response.response.output_text.trim();
+    var payload = response.response || {};
+
+    if (payload.output_text) {
+        return payload.output_text.trim();
+    }
+
+    if (Array.isArray(payload.output)) {
+        for (var i = 0; i < payload.output.length; i++) {
+            var outputItem = payload.output[i];
+            if (!outputItem || !Array.isArray(outputItem.content)) {
+                continue;
+            }
+
+            for (var j = 0; j < outputItem.content.length; j++) {
+                var contentItem = outputItem.content[j];
+                if (!contentItem || typeof contentItem.text !== 'string') {
+                    continue;
+                }
+
+                var text = contentItem.text.trim();
+                if (text) {
+                    return text;
+                }
+            }
+        }
     }
 
     return '';
