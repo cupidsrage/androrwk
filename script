@@ -312,13 +312,34 @@ function rwkMain() {
 }
 
 // Wait for the game to fully load before initializing
-function rwkInit() {
-    // #s_name and the game tables must exist before we init
-    if (!document.querySelector('#s_name') || document.querySelectorAll('table').length < 11) {
-        setTimeout(rwkInit, 500);
+function rwkInit(attempt) {
+    var retryDelayMs = 500;
+    var maxAttempts = 20;
+    var currentAttempt = typeof attempt === 'number' ? attempt : 0;
+    var hasBody = !!document.body;
+    var hasGameContainer = !!document.querySelector('#s_name');
+
+    if (hasBody && hasGameContainer) {
+        console.log('[RWK] initializing');
+        rwkMain();
         return;
     }
-    rwkMain();
+
+    if (currentAttempt >= maxAttempts) {
+        console.warn('[RWK] giving up after max retries; running delayed best-effort init');
+        setTimeout(function() {
+            console.log('[RWK] initializing');
+            rwkMain();
+        }, retryDelayMs);
+        return;
+    }
+
+    console.log('[RWK] waiting for page (' + (currentAttempt + 1) + '/' + maxAttempts + ')');
+    setTimeout(function() {
+        rwkInit(currentAttempt + 1);
+    }, retryDelayMs);
 }
 
-setTimeout(rwkInit, 500);
+setTimeout(function() {
+    rwkInit(0);
+}, 500);
