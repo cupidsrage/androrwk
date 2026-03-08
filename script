@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         RWK
 // @namespace    rwk
-// @version      1.0
+// @version      1.1
 // @description  RaceWarKingdoms automation script
 // @author       RWK
 // @match        https://racewarkingdoms.com/*
@@ -13,16 +13,303 @@
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @connect      api.anthropic.com
+// @connect      api.openai.com
 // @connect      api.anti-captcha.com
 // @connect      racewarkingdoms.com
 // @run-at       document-idle
 // ==/UserScript==
 
+/* jshint esversion: 6 */
+
 var captchaSolving = false;
 var lastCaptchaAttempt = null;
 var lastCaptchaSolveTime = 0;
 
-/* jshint esversion: 6 */
+var DEFAULT_SETTINGS = {
+    solverProvider: 'claude',
+    claudeApiKey: '',
+    codexApiKey: ''
+};
+
+function gmGet(key, fallback) {
+    try {
+        var value = GM_getValue(key);
+        return value === undefined ? fallback : value;
+    } catch (e) {
+        return fallback;
+    }
+}
+
+function gmSet(key, value) {
+    try {
+        GM_setValue(key, value);
+    } catch (e) {
+        console.warn('[RWK] Failed to save setting', key, e);
+    }
+}
+
+function getSettings() {
+    return {
+        solverProvider: gmGet('rwk_solver_provider', DEFAULT_SETTINGS.solverProvider),
+        claudeApiKey: gmGet('rwk_claude_api_key', DEFAULT_SETTINGS.claudeApiKey),
+        codexApiKey: gmGet('rwk_codex_api_key', DEFAULT_SETTINGS.codexApiKey)
+    };
+}
+
+function saveSettings(nextSettings) {
+    gmSet('rwk_solver_provider', nextSettings.solverProvider);
+    gmSet('rwk_claude_api_key', nextSettings.claudeApiKey);
+    gmSet('rwk_codex_api_key', nextSettings.codexApiKey);
+}
+
+function getCaptchaImageUrl() {
+    var selectors = [
+        'img[src*="captcha"]',
+        'img[id*="captcha"]',
+        '#captcha img',
+        'img[alt*="captcha"]'
+    ];
+
+    for (var i = 0; i < selectors.length; i++) {
+        var img = document.querySelector(selectors[i]);
+        if (img && img.src) {
+            return img.src;
+        }
+    }
+
+    return null;
+}
+
+function gmRequest(details) {
+    return new Promise(function(resolve, reject) {
+        GM_xmlhttpRequest({
+            method: details.method || 'GET',
+            url: details.url,
+            headers: details.headers || {},
+            data: details.data || null,
+            responseType: details.responseType || 'json',
+            onload: function(response) {
+                if (response.status >= 200 && response.status < 300) {
+                    resolve(response);
+                    return;
+                }
+
+                reject(new Error('[RWK] HTTP ' + response.status + ': ' + response.responseText));
+            },
+            onerror: function(error) {
+                reject(error);
+            }
+        });
+    });
+}
+
+function fetchCaptchaAsDataUrl(captchaUrl) {
+    return new Promise(function(resolve, reject) {
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: captchaUrl,
+            responseType: 'blob',
+            onload: function(response) {
+                var reader = new FileReader();
+                reader.onloadend = function() {
+                    resolve(reader.result);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(response.response);
+            },
+            onerror: reject
+        });
+    });
+}
+
+async function solveCaptchaWithClaude(captchaDataUrl, apiKey) {
+    var base64Image = captchaDataUrl.split(',')[1];
+
+    var response = await gmRequest({
+        method: 'POST',
+        url: 'https://api.anthropic.com/v1/messages',
+        headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json'
+        },
+        data: JSON.stringify({
+            model: 'claude-3-5-haiku-latest',
+            max_tokens: 20,
+            temperature: 0,
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'image',
+                            source: {
+                                type: 'base64',
+                                media_type: 'image/png',
+                                data: base64Image
+                            }
+                        },
+                        {
+                            type: 'text',
+                            text: 'Read this captcha image. Reply with only the captcha text and no other words.'
+                        }
+                    ]
+                }
+            ]
+        })
+    });
+
+    var text = response.response && response.response.content && response.response.content[0] && response.response.content[0].text;
+    return (text || '').trim();
+}
+
+async function solveCaptchaWithCodex(captchaDataUrl, apiKey) {
+    var response = await gmRequest({
+        method: 'POST',
+        url: 'https://api.openai.com/v1/responses',
+        headers: {
+            Authorization: 'Bearer ' + apiKey,
+            'content-type': 'application/json'
+        },
+        data: JSON.stringify({
+            model: 'gpt-4.1-mini',
+            input: [
+                {
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'input_text',
+                            text: 'Read this captcha image. Reply with only the captcha text and no other words.'
+                        },
+                        {
+                            type: 'input_image',
+                            image_url: captchaDataUrl
+                        }
+                    ]
+                }
+            ]
+        })
+    });
+
+    if (response.response && response.response.output_text) {
+        return response.response.output_text.trim();
+    }
+
+    return '';
+}
+
+async function solveCaptchaFromPage() {
+    if (captchaSolving) {
+        return;
+    }
+
+    captchaSolving = true;
+    lastCaptchaAttempt = Date.now();
+
+    try {
+        var settings = getSettings();
+        var imageUrl = getCaptchaImageUrl();
+
+        if (!imageUrl) {
+            throw new Error('Captcha image not found on page.');
+        }
+
+        var apiKey = settings.solverProvider === 'codex' ? settings.codexApiKey : settings.claudeApiKey;
+        if (!apiKey) {
+            throw new Error('Missing API key for selected solver (' + settings.solverProvider + ').');
+        }
+
+        var dataUrl = await fetchCaptchaAsDataUrl(imageUrl);
+        var solvedText = settings.solverProvider === 'codex'
+            ? await solveCaptchaWithCodex(dataUrl, apiKey)
+            : await solveCaptchaWithClaude(dataUrl, apiKey);
+
+        if (!solvedText) {
+            throw new Error('Solver returned an empty captcha value.');
+        }
+
+        var captchaInput = document.querySelector('input[name*="captcha"], input[id*="captcha"], #captcha input[type="text"]');
+        if (captchaInput) {
+            captchaInput.value = solvedText;
+            captchaInput.dispatchEvent(new Event('input', { bubbles: true }));
+            captchaInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        lastCaptchaSolveTime = Date.now();
+        console.log('[RWK] Captcha solved with', settings.solverProvider, solvedText);
+    } catch (error) {
+        console.error('[RWK] Captcha solve failed:', error);
+    } finally {
+        captchaSolving = false;
+    }
+}
+
+function buildSettingsMenu() {
+    var settings = getSettings();
+
+    var panel = document.createElement('div');
+    panel.id = 'rwk-settings-panel';
+    panel.style.position = 'fixed';
+    panel.style.top = '12px';
+    panel.style.right = '12px';
+    panel.style.zIndex = '99999';
+    panel.style.background = 'rgba(0,0,0,0.85)';
+    panel.style.color = '#fff';
+    panel.style.padding = '10px';
+    panel.style.border = '1px solid #666';
+    panel.style.borderRadius = '6px';
+    panel.style.fontSize = '12px';
+    panel.style.width = '260px';
+
+    panel.innerHTML = [
+        '<div style="font-weight:bold;margin-bottom:8px;">RWK Solver Settings</div>',
+        '<label style="display:block;margin-bottom:4px;">Solver</label>',
+        '<select id="rwk-solver-provider" style="width:100%;margin-bottom:8px;">',
+        '<option value="claude">Claude</option>',
+        '<option value="codex">ChatGPT Codex</option>',
+        '</select>',
+        '<label style="display:block;margin-bottom:4px;">Claude API Key</label>',
+        '<input type="password" id="rwk-claude-key" style="width:100%;margin-bottom:8px;" placeholder="sk-ant-...">',
+        '<label style="display:block;margin-bottom:4px;">Codex API Key</label>',
+        '<input type="password" id="rwk-codex-key" style="width:100%;margin-bottom:8px;" placeholder="sk-...">',
+        '<button id="rwk-save-settings" style="margin-right:6px;">Save</button>',
+        '<button id="rwk-solve-captcha">Solve Captcha</button>'
+    ].join('');
+
+    document.body.appendChild(panel);
+
+    var providerSelect = panel.querySelector('#rwk-solver-provider');
+    var claudeInput = panel.querySelector('#rwk-claude-key');
+    var codexInput = panel.querySelector('#rwk-codex-key');
+
+    providerSelect.value = settings.solverProvider;
+    claudeInput.value = settings.claudeApiKey;
+    codexInput.value = settings.codexApiKey;
+
+    panel.querySelector('#rwk-save-settings').addEventListener('click', function() {
+        var next = {
+            solverProvider: providerSelect.value,
+            claudeApiKey: claudeInput.value.trim(),
+            codexApiKey: codexInput.value.trim()
+        };
+
+        saveSettings(next);
+        console.log('[RWK] Settings saved');
+    });
+
+    panel.querySelector('#rwk-solve-captcha').addEventListener('click', function() {
+        solveCaptchaFromPage();
+    });
+}
+
+function rwkMain() {
+    if (document.querySelector('#rwk-settings-panel')) {
+        return;
+    }
+
+    buildSettingsMenu();
+    unsafeWindow.rwkSolveCaptcha = solveCaptchaFromPage;
+}
 
 // Wait for the game to fully load before initializing
 function rwkInit() {
