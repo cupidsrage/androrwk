@@ -460,6 +460,7 @@ function toggleBarVisibility() {
 }
 
 function checkInventory() {
+    // Check chat nodes
     for (let n = 0; n < 5; n++) {
         try {
             if (s_Chat.childNodes[n].innerHTML.indexOf("Inventory dangerously full") > -1) {
@@ -480,6 +481,17 @@ function checkInventory() {
 
         }
     }
+    // Also check the response area
+    try {
+        let resp = document.querySelector('#s_Response').innerText;
+        if (resp.indexOf("Inventory dangerously full") > -1 || resp.indexOf("No more of that relic") > -1) {
+            if (!globalSync) {
+                burningItems = true;
+            } else {
+                localStorage.burnAsh = "true";
+            }
+        }
+    } catch(e) {}
 }
 
 function zeroPad(value) {
@@ -552,13 +564,12 @@ function securityCheck() {
             if (s_Chat.childNodes[n].innerHTML.indexOf('You have hit the hourly maximum amount of moves.') > -1) {
                 return false;
             }
-            if (s_Chat.childNodes[n].innerHTML.indexOf("Equipped items cannot be sold or destroyed.") > -1) {
-                s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("destroyed.", "destroyed!");
-                if (!globalSync) {
-                    burningItems = false;
-                } else {
-                    localStorage.burnAsh = "false";
-                }
+            if (s_Chat.childNodes[n].innerHTML.indexOf("Equipped items cannot be sold or destroyed.") > -1 ||
+                s_Chat.childNodes[n].innerHTML.indexOf("EQUIPPED and cannot be sold") > -1) {
+                s_Chat.childNodes[n].innerHTML = s_Chat.childNodes[n].innerHTML.replace("destroyed.", "destroyed!").replace("traded.", "traded!");
+                // Don't stop burning — just skip this item, junkItems will advance next tick
+                console.log('[Ash] Equipped item detected in chat — skipping');
+                if (junkItems.length > 0) junkItems.shift();
             }
             if (document.querySelector("#s_Response").innerText.indexOf("Bot check. Count the objects seen.") > -1) {
                 if (localStorage.globalsecCheck == 1) {
@@ -684,68 +695,31 @@ function setJobType() {
 function findJunk() {
     doAction(0, 'burn', '999999999', '', '', false);
     junkItems = [];
-    let relics = [
-        35,
-        36,
-        37,
-        38,
-        39,
-        46,
-        47,
-        51,
-        52,
-        53,
-        54,
-        55,
-        58,
-        59,
-        60,
-        64,
-        66,
-        67,
-        68,
-        69,
-        71,
-        72,
-        73,
-        74,
-        75,
-        76,
-        77,
-        78,
-        79,
-        80,
-        81,
-        82,
-        83,
-        84,
-        85,
-        86,
-        87,
-        88
-    ];
 
     let elm = document.getElementById(`general0`).elements[5];
-	    for (let n = 0; n < elm.length; n++) {
-        let item = elm.options[n].value;
-		let itemText = elm.options[n].innerText;
-        if (item >= 0 && item < 79||item >= 1000 && item < 1079||item >= 2000 && item < 2079||item >= 3000 && item < 3079||item >= 4000 && item < 4079||item >= 5000 && item < 6079||item >= 7000 && item < 7079||item >= 8000 && item < 8079||item >= 9000 && item < 9079||item >= 10000 && item < 10036||item >= 10040 && item < 10052||item >= 12000 && item < 12079||item >= 13000 && item < 13079||item >= 14000 && item < 14079||item >= 15000 && item < 15079||item >= 16000 && item < 16079||item >= 17000 && item < 17079||item >= 18000 && item < 18079||item >= 19000 && item < 19079||item >= 20000 && item < 20079||item >= 21000 && item < 21079||item >= 22000 && item < 22079||item >= 23000 && item < 23079||item >= 24000 && item < 24079||item >= 25000 && item < 25079||item >= 26000 && item < 26079||item == 10060) {	
-                if (itemText.indexOf("EQUIPPED") == -1) {
-                    junkItems.push(item);
-                }
-            }
-        }
+    let currentCategory = '';
+    let skipCategories = ['relics', 'others'];
+
     for (let n = 0; n < elm.length; n++) {
         let item = elm.options[n].value;
         let itemText = elm.options[n].innerText;
-        if (getEnch(item) > -1 && (parseInt(item, 10) % 1000 < 70)) {
-            if (relics.indexOf(parseInt(item / 100000, 10) % 100 - 1) < 0) {
-                if (itemText.indexOf("EQUIPPED") == -1) {
-                    junkItems.push(item);
-                }
-            }
+
+        // Category header
+        if (item == '999999999') {
+            currentCategory = itemText.replace(/_/g, '').trim().toLowerCase();
+            continue;
         }
+
+        // Skip equipped items
+        if (itemText.indexOf('EQUIPPED') > -1 || itemText.indexOf('Equipped') > -1 || itemText.indexOf('equipped') > -1) continue;
+
+        // Skip Relics and Others categories entirely
+        if (skipCategories.indexOf(currentCategory) > -1) continue;
+
+        // Store index + value so we can select by index
+        junkItems.push({ index: n, value: item, name: itemText });
     }
+    console.log('[Ash] findJunk: ' + junkItems.length + ' burnable items');
 }
 
 function increaseItem() {
@@ -937,6 +911,7 @@ function getValue(itemnumber) {
 }
 
 function burnItems(force = false) {
+console.log('[Ash] burnItems called, force=' + force + ' isReadyTwo=' + isReadyTwo());
 let gold = parseInt(document.getElementById("s_Gold").innerText.replace(/\,/g, ''), 10);
 let move1 = rwkLock.state;
 let beast = document.querySelector("#auto-beast-check").checked;
@@ -981,32 +956,29 @@ if (isReadyTwo()){
         }
 					}
     findJunk();
+    console.log('[Ash] findJunk found ' + junkItems.length + ' items');
     if (junkItems.length > 0) {
-        if (force) {
-		rwkLock.release();
-            doAction(0, "burn", junkItems[0], '', '', true);
-            junkItems = junkItems.splice(1, junkItems.length);
-
-        } else {
-            if (!globalSync) {
-			rwkLock.release();
-                doAction(0, "burn", junkItems[0], '', '', true);
-                junkItems = junkItems.splice(1, junkItems.length);
-            } else {
-                if (isReadyTwo() && localStorage.burnAsh == "true") {
-				rwkLock.release();
-                    doAction(0, "burn", junkItems[0], '', '', true);
-                    junkItems = junkItems.splice(1, junkItems.length);
-                }
-            }
+        let item = junkItems[0];
+        console.log('[Ash] Burning: ' + item.name + ' (index=' + item.index + ' val=' + item.value + ')');
+        // Select burn action, then select the item BY INDEX to avoid equipped duplicates
+        let field = document.getElementById('general0');
+        let action = field.elements[4];
+        let target = field.elements[5];
+        action.value = 'burn';
+        try { $(action).trigger("change"); } catch(e) {}
+        target.selectedIndex = item.index;
+        try { $(target).trigger("change"); } catch(e) {}
+        if (force || !globalSync || (isReadyTwo() && localStorage.burnAsh == "true")) {
+            rwkLock.release();
+            document.getElementById('s_subbut0').childNodes[0].click();
+            junkItems.shift();
         }
         document.querySelector("#ash-earned").innerText = parseInt(startAsh - getCurrentAsh(), 10);
     } else {
-        if (!globalSync) {
-            burningItems = false;
-        } else {
-            localStorage.burnAsh = "false";
-        }
+        // All items burned — clear burn state so combat resumes
+        burningItems = false;
+        localStorage.burnAsh = "false";
+        console.log('[Ash] All items burned — resuming combat');
         if (!force) {
             writeSystemMessage(`${getCurrentAsh() - startAsh} Ash earned this session.`);
         }
@@ -1320,6 +1292,15 @@ button:hover { background: #2e2e2e; border-color: #888; color: #fff; }
             <input style="width:280px" type="text" id="captcha-openai-key" placeholder="sk-..." value="${localStorage.captchaOpenaiKey || ''}">
         </div>
         <div class="field-row">
+            <label>GPT Model:</label>
+            <select id="captcha-gpt-model">
+                <option value="gpt-4o" ${(localStorage.captchaGptModel||'gpt-4o')==='gpt-4o'?'selected':''}>gpt-4o</option>
+                <option value="gpt-4.1" ${(localStorage.captchaGptModel||'')==='gpt-4.1'?'selected':''}>gpt-4.1</option>
+                <option value="gpt-5.4" ${(localStorage.captchaGptModel||'')==='gpt-5.4'?'selected':''}>gpt-5.4</option>
+                <option value="gpt-5.2" ${(localStorage.captchaGptModel||'')==='gpt-5.2'?'selected':''}>gpt-5.2</option>
+            </select>
+        </div>
+        <div class="field-row">
             <label>Claude Key:</label>
             <input style="width:280px" type="text" id="captcha-api-key" placeholder="sk-ant-..." value="${localStorage.captchaApiKey || ''}">
         </div>
@@ -1466,6 +1447,7 @@ function saveExternalSettings() {
     localStorage.captchaApiKey = settingsMenu.document.querySelector("#captcha-api-key").value.trim();
     localStorage.captchaAcKey = settingsMenu.document.querySelector("#captcha-ac-key").value.trim();
     localStorage.captchaOpenaiKey = settingsMenu.document.querySelector("#captcha-openai-key").value.trim();
+    localStorage.captchaGptModel = settingsMenu.document.querySelector("#captcha-gpt-model").value;
     localStorage.captchaSolver = settingsMenu.document.querySelector("#captcha-solver").value;
     // Humanizer settings
     localStorage.hCombatMin = settingsMenu.document.querySelector("#h-combat-min").value;
@@ -4627,20 +4609,29 @@ function claudeSolveCaptcha(apiKey, rawBase64) {
             model: 'claude-sonnet-4-20250514',
             max_tokens: 8000,
             thinking: { type: 'enabled', budget_tokens: 6144 },
-            system: `Count circles and triangles in this captcha image.
+            system: `This is a captcha image. Your task: count ONLY the circles and triangles. Reply with a single digit.
 
-The background is colored stripes. The shapes are filled with stripes too, but with a DIFFERENT color pattern or stripe direction than the background. The boundary of each shape is where the stripe pattern changes.
+WHAT THE IMAGE LOOKS LIKE:
+- The entire image is filled with colored horizontal or vertical LINES/STRIPES as a background
+- On top of the background, there are CIRCLES and TRIANGLES
+- The shapes also have stripes/lines running through them, but the colors or pattern inside each shape are visibly different from the background stripes
 
-ONLY circles and triangles exist. There are NEVER rectangles or squares — those are illusions from the stripes.
+WHAT TO COUNT:
+- Count ONLY circles (round shapes) and triangles (3-sided shapes)
+- Add circles + triangles together for one total number
 
-CRITICAL RULES:
-- Shapes OVERLAP. Two circles can overlap and look like one blob — count each circle separately. Look for where one stripe pattern meets a different stripe pattern within what seems like one shape — that means it is TWO overlapping shapes.
-- There are typically 3-7 shapes total
-- Shapes range from very large to very small
-- Small triangles are easy to miss — look carefully everywhere including corners, edges, and behind larger shapes
-- Shapes can be partially cut off at edges — still count them
+WHAT TO IGNORE — DO NOT COUNT THESE:
+- Do NOT count the background stripes/lines — they are NOT shapes
+- Do NOT count rectangles or squares — any rectangular appearance is an illusion from the stripes
+- Do NOT count the lines themselves
 
-Count carefully and reply with ONLY a single digit 1-9.`,
+WATCH OUT FOR:
+- Two shapes can overlap — if you see two different stripe patterns meeting inside what looks like one shape, it is actually TWO separate shapes overlapping
+- Small shapes are easy to miss — scan corners, edges, and behind larger shapes
+- Shapes can be cut off at image edges — still count them
+- Typical answer is between 3 and 7
+
+Reply with ONLY a single digit 1-9.`,
             messages: [{ role: 'user', content: userContent }]
         }),
         onload: function(resp) {
@@ -4675,22 +4666,54 @@ Count carefully and reply with ONLY a single digit 1-9.`,
 
 
 function gptSolveCaptcha(apiKey, imageBase64) {
-    captchaLog('Sending to GPT-5.4 (reasoning=medium)');
+    // Check image size - if too big, skip upscale next time
+    let imgSizeKB = Math.round(imageBase64.length / 1024);
+    captchaLog('Sending to GPT — image size: ' + imgSizeKB + 'KB');
 
-    const systemPrompt = `Count circles and triangles in this captcha image.
+    const systemPrompt = `This is a captcha image. Your task: count ONLY the circles and triangles. Reply with a single digit.
 
-The background is colored stripes. The shapes are filled with stripes too, but with a DIFFERENT color pattern or stripe direction than the background. The boundary of each shape is where the stripe pattern changes.
+WHAT THE IMAGE LOOKS LIKE:
+- The entire image is filled with colored horizontal or vertical LINES/STRIPES as a background
+- On top of the background, there are CIRCLES and TRIANGLES
+- The shapes also have stripes/lines running through them, but the colors or pattern inside each shape are visibly different from the background stripes
 
-ONLY circles and triangles exist. There are NEVER rectangles or squares — those are illusions from the stripes.
+WHAT TO COUNT:
+- Count ONLY circles (round shapes) and triangles (3-sided shapes)
+- Add circles + triangles together for one total number
 
-CRITICAL RULES:
-- Shapes OVERLAP. Two circles can overlap and look like one blob — count each circle separately. Look for where one stripe pattern meets a different stripe pattern within what seems like one shape — that means it is TWO overlapping shapes.
-- There are typically 3-7 shapes total
-- Shapes range from very large to very small
-- Small triangles are easy to miss — look carefully everywhere including corners, edges, and behind larger shapes
-- Shapes can be partially cut off at edges — still count them
+WHAT TO IGNORE — DO NOT COUNT THESE:
+- Do NOT count the background stripes/lines — they are NOT shapes
+- Do NOT count rectangles or squares — any rectangular appearance is an illusion from the stripes
+- Do NOT count the lines themselves
 
-Count carefully and reply with ONLY a single digit 1-9.`;
+WATCH OUT FOR:
+- Two shapes can overlap — if you see two different stripe patterns meeting inside what looks like one shape, it is actually TWO separate shapes overlapping
+- Small shapes are easy to miss — scan corners, edges, and behind larger shapes
+- Shapes can be cut off at image edges — still count them
+- Typical answer is between 3 and 7
+
+Reply with ONLY a single digit 1-9.`;
+
+    // Try gpt-5.4 first, fall back to gpt-4o if it fails
+    let model = localStorage.captchaGptModel || 'gpt-4o';
+    captchaLog('Using model: ' + model);
+
+    let payload = {
+        model: model,
+        max_completion_tokens: 8000,
+        messages: [
+            { role: 'developer', content: systemPrompt },
+            { role: 'user', content: [
+                { type: 'image_url', image_url: { url: 'data:image/png;base64,' + imageBase64, detail: 'high' } },
+                { type: 'text', text: 'How many shapes total?' }
+            ]}
+        ]
+    };
+
+    // Only add reasoning_effort for gpt-5.x models
+    if (model.indexOf('gpt-5') > -1) {
+        payload.reasoning_effort = 'medium';
+    }
 
     GM_xmlhttpRequest({
         method: 'POST',
@@ -4699,20 +4722,16 @@ Count carefully and reply with ONLY a single digit 1-9.`;
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + apiKey
         },
-        data: JSON.stringify({
-            model: 'gpt-5.4',
-            max_completion_tokens: 8000,
-            reasoning_effort: 'medium',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: [
-                    { type: 'image_url', image_url: { url: 'data:image/png;base64,' + imageBase64, detail: 'high' } },
-                    { type: 'text', text: 'How many shapes total?' }
-                ]}
-            ]
-        }),
+        timeout: 60000,
+        data: JSON.stringify(payload),
         onload: function(resp) {
             try {
+                captchaLog('GPT response status: ' + resp.status);
+                if (resp.status !== 200) {
+                    captchaLog('GPT error response: ' + resp.responseText.substring(0, 500));
+                    beep(); captchaSolving = false;
+                    return;
+                }
                 const d = JSON.parse(resp.responseText);
                 if (d.error) { captchaLog('GPT error: ' + d.error.message); beep(); captchaSolving = false; return; }
                 const msg = d.choices && d.choices[0] && d.choices[0].message;
@@ -4736,7 +4755,9 @@ Count carefully and reply with ONLY a single digit 1-9.`;
                 }, clickDelay);
             } catch(e) { captchaLog('GPT parse error: ' + e.message); beep(); captchaSolving = false; }
         },
-        onerror: function() { captchaLog('GPT request failed'); beep(); captchaSolving = false; }
+        onerror: function(resp) { captchaLog('GPT request FAILED — status: ' + (resp && resp.status) + ' error: ' + (resp && resp.error)); beep(); captchaSolving = false; },
+        ontimeout: function() { captchaLog('GPT request TIMED OUT after 60s'); beep(); captchaSolving = false; },
+        onabort: function() { captchaLog('GPT request ABORTED'); beep(); captchaSolving = false; }
     });
 }
 
@@ -5010,6 +5031,18 @@ addEventListener('keydown', function(event){
     }
     if (event.keyCode === 220) {
         toggleBarVisibility();
+        event.preventDefault();
+    }
+    // Q = force burn items
+    if (event.keyCode === 81 && !nukeKeysEnabled) {
+        console.log('[Ash] Q pressed — forcing burn mode');
+        burningItems = true;
+        localStorage.burnAsh = "true";
+        // If loop is running, it'll pick up burningItems on next tick
+        // If not running, do one burn now
+        if (!running) {
+            burnItems(true);
+        }
         event.preventDefault();
     }
     if (event.keyCode === 118) {
@@ -5297,6 +5330,33 @@ function doAct() {
     }
 
     securityCheck();
+
+    // ── INVENTORY FULL — force burn items before doing anything else ──
+    if (response.indexOf("Inventory dangerously full") > -1 || response.indexOf("No more of that relic") > -1) {
+        console.log('[Ash] doAct: inventory full — forcing burn');
+        if (!globalSync) {
+            burningItems = true;
+        } else {
+            localStorage.burnAsh = "true";
+        }
+        burnItems(true);
+        loop();
+        return;
+    }
+
+    // ── EQUIPPED ITEM — skip it and keep burning ──
+    if (response.indexOf("EQUIPPED and cannot be sold") > -1 || response.indexOf("Equipped items cannot be sold") > -1) {
+        console.log('[Ash] doAct: equipped item — skipping, ' + junkItems.length + ' items left');
+        if (junkItems.length > 0) junkItems.shift();
+        if (junkItems.length > 0) {
+            burnItems(true);
+        } else {
+            burningItems = false;
+            localStorage.burnAsh = "false";
+        }
+        loop();
+        return;
+    }
 
     // ── Dispatch task ─────────────────────────────────────────────────
     if (task === "ash") {
