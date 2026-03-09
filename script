@@ -4808,10 +4808,10 @@ function antiCaptchaCreateTask(apiKey, base64Data) {
                 phrase: false,
                 case: false,
                 numeric: 1,
-                math: 0,
+                math: 1,
                 minLength: 1,
                 maxLength: 1,
-                comment: 'Count the circles and triangles in this image. Enter a single number from 1 to 9. Only count the shapes, not the background stripes.'
+                comment: '△ + ○ = ? Enter one digit (1-9). Count only shapes, not background stripes.'
             }
         }),
         onload: function(resp) {
