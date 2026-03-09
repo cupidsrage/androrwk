@@ -1294,12 +1294,15 @@ button:hover { background: #2e2e2e; border-color: #888; color: #fff; }
         <div class="field-row">
             <label>GPT Model:</label>
             <select id="captcha-gpt-model">
-                <option value="gpt-4o" ${(localStorage.captchaGptModel||'gpt-4o')==='gpt-4o'?'selected':''}>gpt-4o</option>
+                <option value="gpt-4o-mini" ${(localStorage.captchaGptModel||'gpt-4o-mini')==='gpt-4o-mini'?'selected':''}>gpt-4o-mini (fast)</option>
+                <option value="gpt-4o" ${(localStorage.captchaGptModel||'')==='gpt-4o'?'selected':''}>gpt-4o</option>
                 <option value="gpt-4.1" ${(localStorage.captchaGptModel||'')==='gpt-4.1'?'selected':''}>gpt-4.1</option>
                 <option value="gpt-5.4" ${(localStorage.captchaGptModel||'')==='gpt-5.4'?'selected':''}>gpt-5.4</option>
-                <option value="gpt-5.3-instant" ${(localStorage.captchaGptModel||'')==='gpt-5.3-instant'?'selected':''}>gpt-5.3-instant</option>
                 <option value="gpt-5.2" ${(localStorage.captchaGptModel||'')==='gpt-5.2'?'selected':''}>gpt-5.2</option>
             </select>
+        </div>
+        <div class="field-row">
+            <button onclick="window.opener.previewCaptchaModels();">🔎 Preview model answers on current CAPTCHA</button>
         </div>
         <div class="field-row">
             <label>Claude Key:</label>
@@ -4687,6 +4690,124 @@ Reply with ONLY a single digit 1-9.`,
 }
 
 
+function getCaptchaSystemPrompt() {
+    return `This is a captcha image. Your task: count ONLY the circles and triangles. Reply with a single digit.
+
+HOW THIS CAPTCHA WORKS:
+- There are many horizontal stripes in the image
+- On top of the background, there are CIRCLES and TRIANGLES
+- The shapes also have stripes/lines running through them, but the colors or pattern inside each shape are visibly different from the background stripes
+
+WHAT TO COUNT:
+- Count ONLY circles (round shapes) and triangles (3-sided shapes)
+- Add circles + triangles together for one total number
+
+WHAT TO IGNORE — DO NOT COUNT THESE:
+- Do NOT count the background stripes/lines — they are NOT shapes
+- Do NOT count rectangles or squares — any rectangular appearance is an illusion from the stripes
+- Do NOT count the lines themselves
+
+WATCH OUT FOR:
+- Two shapes can overlap — if you see two different stripe patterns meeting inside what looks like one shape, it is actually TWO separate shapes overlapping
+- Small shapes are easy to miss — scan corners, edges, and behind larger shapes
+- Shapes can be cut off at image edges — still count them
+- Typical answer is between 3 and 7
+
+Reply with ONLY a single digit 1-9.`;
+}
+
+function getAllowedCaptchaGptModels() {
+    return ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1', 'gpt-5.4', 'gpt-5.2'];
+}
+
+function previewCaptchaModels() {
+    const apiKey = (localStorage.captchaOpenaiKey || '').trim();
+    if (!apiKey) { alert('No OpenAI key set in Settings'); return; }
+    const captchaImg = document.querySelector('img[src*="/sec/"], img.mycshift');
+    if (!captchaImg) { alert('No captcha image found on screen right now'); return; }
+
+    captchaLog('Preview: fetching current CAPTCHA image for model comparison...');
+    GM_xmlhttpRequest({
+        method: 'GET',
+        url: captchaImg.src + '?preview=' + Date.now(),
+        responseType: 'arraybuffer',
+        onload: function(resp) {
+            try {
+                if (!resp.response || resp.response.byteLength === 0) { captchaLog('Preview error: empty image'); return; }
+                let bytes = new Uint8Array(resp.response);
+                let binary = '';
+                for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+                const base64 = btoa(binary);
+                upscaleCaptcha(base64, 3).then(async upscaled => {
+                    const models = getAllowedCaptchaGptModels();
+                    captchaLog('Preview: running ' + models.length + ' models (no click will happen)');
+                    for (const model of models) {
+                        await previewSingleCaptchaModel(apiKey, upscaled, model);
+                    }
+                    captchaLog('Preview: model comparison complete');
+                });
+            } catch(e) {
+                captchaLog('Preview error: ' + e.message);
+            }
+        },
+        onerror: function() { captchaLog('Preview fetch error'); }
+    });
+}
+
+function previewSingleCaptchaModel(apiKey, imageBase64, model) {
+    return new Promise(resolve => {
+        let payload = {
+            model: model,
+            max_completion_tokens: 20,
+            messages: [
+                { role: 'developer', content: getCaptchaSystemPrompt() },
+                { role: 'user', content: [
+                    { type: 'image_url', image_url: { url: 'data:image/png;base64,' + imageBase64, detail: 'high' } },
+                    { type: 'text', text: 'Return only one digit (1-9). No words.' }
+                ]}
+            ]
+        };
+
+        if (model.indexOf('gpt-5') > -1) payload.reasoning_effort = 'low';
+
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: 'https://api.openai.com/v1/chat/completions',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + apiKey
+            },
+            timeout: 60000,
+            data: JSON.stringify(payload),
+            onload: function(resp) {
+                try {
+                    if (resp.status !== 200) {
+                        captchaLog('Preview [' + model + '] HTTP ' + resp.status + ' :: ' + resp.responseText.substring(0, 180));
+                        resolve();
+                        return;
+                    }
+                    const d = JSON.parse(resp.responseText);
+                    const msg = d.choices && d.choices[0] && d.choices[0].message;
+                    const raw = (msg && msg.content ? msg.content.trim() : '');
+                    const parsed = parseCaptchaAnswer(raw);
+                    captchaLog('Preview [' + model + '] raw=' + raw + ' | parsed=' + parsed.answer + ' via ' + parsed.rule);
+                } catch (e) {
+                    captchaLog('Preview [' + model + '] parse error: ' + e.message);
+                }
+                resolve();
+            },
+            onerror: function(resp) {
+                captchaLog('Preview [' + model + '] request failed: ' + (resp && resp.status));
+                resolve();
+            },
+            ontimeout: function() {
+                captchaLog('Preview [' + model + '] timed out');
+                resolve();
+            }
+        });
+    });
+}
+
 function gptSolveCaptcha(apiKey, imageBase64) {
     // Check image size - if too big, skip upscale next time
     let imgSizeKB = Math.round(imageBase64.length / 1024);
@@ -4717,16 +4838,20 @@ WATCH OUT FOR:
 Reply with ONLY a single digit 1-9.`;
 
     const modelAliases = {
-        'chatgpt-5.3-instant': 'gpt-5.3-instant',
-        'chat-gpt-5.3-instant': 'gpt-5.3-instant',
-        'chat gpt 5.3 instant': 'gpt-5.3-instant'
+        'chatgpt-5.3-instant': 'gpt-5.2',
+        'chat-gpt-5.3-instant': 'gpt-5.2',
+        'chat gpt 5.3 instant': 'gpt-5.2',
+        'gpt-5.3-instant': 'gpt-5.2',
+        'chatgpt-4o-mini': 'gpt-4o-mini',
+        'chat-gpt-4o-mini': 'gpt-4o-mini',
+        'chat gpt 4o mini': 'gpt-4o-mini'
     };
-    const allowedModels = ['gpt-4o', 'gpt-4.1', 'gpt-5.4', 'gpt-5.3-instant', 'gpt-5.2'];
-    let selectedModel = (localStorage.captchaGptModel || 'gpt-4o').trim().toLowerCase();
+    const allowedModels = getAllowedCaptchaGptModels();
+    let selectedModel = (localStorage.captchaGptModel || 'gpt-4o-mini').trim().toLowerCase();
     selectedModel = modelAliases[selectedModel] || selectedModel;
     if (allowedModels.indexOf(selectedModel) === -1) {
-        captchaLog('Unknown GPT model in settings (' + selectedModel + ') — defaulting to gpt-4o');
-        selectedModel = 'gpt-4o';
+        captchaLog('Unknown GPT model in settings (' + selectedModel + ') — defaulting to gpt-4o-mini');
+        selectedModel = 'gpt-4o-mini';
     }
     captchaLog('Using model: ' + selectedModel);
 
