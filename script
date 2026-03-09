@@ -4574,6 +4574,27 @@ function solveCaptcha() {
     });
 }
 
+
+function parseCaptchaAnswer(raw) {
+    const exactMatch = raw.match(/^\s*([1-9])\s*$/);
+    if (exactMatch) {
+        return { answer: parseInt(exactMatch[1], 10), rule: 'exact' };
+    }
+
+    const totalMatch = raw.match(/total\s*[:=]?\s*([1-9])/i);
+    if (totalMatch) {
+        return { answer: parseInt(totalMatch[1], 10), rule: 'total' };
+    }
+
+    const standaloneDigits = raw.match(/(?:^|[^\d])([1-9])(?=[^\d]|$)/g);
+    if (standaloneDigits && standaloneDigits.length > 0) {
+        const lastMatch = standaloneDigits[standaloneDigits.length - 1].match(/([1-9])/);
+        return { answer: lastMatch ? parseInt(lastMatch[1], 10) : NaN, rule: 'last-digit' };
+    }
+
+    return { answer: NaN, rule: 'none' };
+}
+
 function claudeSolveCaptcha(apiKey, rawBase64) {
     captchaLog('Sending raw image to Claude (no preprocessing)');
 
@@ -4644,9 +4665,9 @@ Reply with ONLY a single digit 1-9.`,
                 const textBlock = d.content.find(b => b.type === 'text');
                 if (!textBlock) { captchaLog('No text block'); beep(); captchaSolving = false; return; }
                 const raw = textBlock.text.trim();
-                const digitMatch = raw.match(/\d/);
-                const answer = digitMatch ? parseInt(digitMatch[0], 10) : NaN;
-                captchaLog('Claude answer: ' + raw + (raw !== String(answer) ? ' → parsed=' + answer : ''));
+                const parsed = parseCaptchaAnswer(raw);
+                const answer = parsed.answer;
+                captchaLog('Claude parse rule: ' + parsed.rule + ' | raw: ' + raw + ' | parsed=' + answer);
                 if (isNaN(answer) || answer < 1 || answer > 9) { captchaLog('Invalid answer: ' + raw); beep(); captchaSolving = false; return; }
                 const clickDelay = randomValue(500, 1500);
                 captchaLog('Clicking ' + answer + ' in ' + clickDelay + 'ms...');
@@ -4749,9 +4770,9 @@ Reply with ONLY a single digit 1-9.`;
                 if (!msg) { captchaLog('GPT: No message in response'); beep(); captchaSolving = false; return; }
                 const raw = msg.content.trim();
                 captchaLog('GPT raw: ' + raw);
-                const digitMatch = raw.match(/\d/);
-                const answer = digitMatch ? parseInt(digitMatch[0], 10) : NaN;
-                captchaLog('GPT answer: ' + answer);
+                const parsed = parseCaptchaAnswer(raw);
+                const answer = parsed.answer;
+                captchaLog('GPT parse rule: ' + parsed.rule + ' | parsed=' + answer);
                 if (isNaN(answer) || answer < 1 || answer > 9) { captchaLog('Invalid answer: ' + raw); beep(); captchaSolving = false; return; }
                 const clickDelay = randomValue(500, 1500);
                 captchaLog('Clicking ' + answer + ' in ' + clickDelay + 'ms...');
